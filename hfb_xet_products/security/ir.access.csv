@@ -1,0 +1,7 @@
+id,name,model_id,group_id/id,operation,domain
+access_xp_config_system,communication.provider.xet_products system,communication.provider.xet_products,base.group_system,crud,
+access_xp_config_user,communication.provider.xet_products user,communication.provider.xet_products,base.group_user,r,
+access_xp_staging_line_system,xp.staging.line system,xp.staging.line,base.group_system,crud,
+access_xp_media_type_system,xp.media.type system,xp.media.type,base.group_system,crud,
+access_xp_media_type_user,xp.media.type user,xp.media.type,base.group_user,r,
+access_xp_product_media_user,xp.product.media user,xp.product.media,base.group_user,crud,

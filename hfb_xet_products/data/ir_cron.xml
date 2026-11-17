@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Częstotliwość przebiegów = interwał cronów inicjujących (osobno import
+	i eksport). Cron dyspozytora to jedyny worker wykonujący etapy.
+	Wszystkie crony są domyślnie wyłączone.
+-->
+<odoo noupdate="1">
+
+	<record id="ir_cron_xp_init_import" model="ir.cron">
+		<field name="name">📦 XET Products - inicjowanie przebiegów importu</field>
+		<field name="model_id" ref="hfb_xet_products.model_communication_provider_xet_products"/>
+		<field name="state">code</field>
+		<field name="code">model._cron_xp_init(direction="import")</field>
+		<field name="interval_number">1</field>
+		<field name="interval_type">hours</field>
+		<field name="active" eval="False"/>
+	</record>
+
+	<record id="ir_cron_xp_init_export" model="ir.cron">
+		<field name="name">📦 XET Products - inicjowanie przebiegów eksportu</field>
+		<field name="model_id" ref="hfb_xet_products.model_communication_provider_xet_products"/>
+		<field name="state">code</field>
+		<field name="code">model._cron_xp_init(direction="export")</field>
+		<field name="interval_number">1</field>
+		<field name="interval_type">days</field>
+		<field name="active" eval="False"/>
+	</record>
+
+	<record id="ir_cron_xp_process" model="ir.cron">
+		<field name="name">♻️ XET Products - przetwarzanie przebiegów (worker)</field>
+		<field name="model_id" ref="hfb_xmlmap_exporter.model_communication_log"/>
+		<field name="state">code</field>
+		<field name="code">model._cron_xp_process()</field>
+		<field name="interval_number">1</field>
+		<field name="interval_type">minutes</field>
+		<field name="active" eval="False"/>
+	</record>
+
+</odoo>

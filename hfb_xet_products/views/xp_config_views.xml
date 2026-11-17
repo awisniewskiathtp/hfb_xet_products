@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+	<record id="view_xp_config_list" model="ir.ui.view">
+		<field name="name">communication.provider.xet_products.list</field>
+		<field name="model">communication.provider.xet_products</field>
+		<field name="arch" type="xml">
+			<list string="XET Products - kanały">
+				<field name="name"/>
+				<field name="code"/>
+				<field name="direction"/>
+				<field name="sftp_host"/>
+				<field name="template_id" optional="show"/>
+				<field name="export_mode" optional="show"/>
+				<field name="company_id" groups="base.group_multi_company"/>
+				<field name="active" widget="boolean_toggle"/>
+			</list>
+		</field>
+	</record>
+
+	<record id="view_xp_config_form" model="ir.ui.view">
+		<field name="name">communication.provider.xet_products.form</field>
+		<field name="model">communication.provider.xet_products</field>
+		<field name="arch" type="xml">
+			<form string="XET Products - kanał">
+				<header>
+					<button name="action_test_connection" type="object" string="Test połączenia" class="btn-secondary"/>
+					<button name="action_run_now" type="object" string="Uruchom przebieg teraz" class="btn-primary"/>
+				</header>
+				<sheet>
+					<div class="oe_button_box" name="button_box">
+						<button name="action_open_logs" type="object" class="oe_stat_button" icon="fa-list">
+							<field name="log_count" widget="statinfo" string="Przebiegi"/>
+						</button>
+					</div>
+					<widget name="web_ribbon" title="Archiwum" bg_color="text-bg-danger" invisible="active"/>
+					<div class="oe_title">
+						<h1><field name="name" placeholder="Nazwa kanału"/></h1>
+					</div>
+					<group>
+						<group>
+							<field name="code"/>
+							<field name="direction"/>
+							<field name="provider_id"/>
+						</group>
+						<group>
+							<field name="company_id" groups="base.group_multi_company"/>
+							<field name="active" invisible="1"/>
+						</group>
+					</group>
+					<notebook>
+						<page string="SFTP" name="sftp">
+							<group>
+								<group string="Połączenie">
+									<field name="sftp_host"/>
+									<field name="sftp_port"/>
+									<field name="sftp_username"/>
+									<field name="sftp_password" password="True"/>
+									<field name="sftp_timeout"/>
+								</group>
+								<group string="Klucze">
+									<field name="sftp_private_key"/>
+									<field name="sftp_key_passphrase" password="True"/>
+									<field name="sftp_host_fingerprint" placeholder="SHA256:..."/>
+								</group>
+							</group>
+						</page>
+						<page string="Import" name="import" invisible="direction != 'import'">
+							<group>
+								<group string="Katalogi zdalne">
+									<field name="sftp_in_dir"/>
+									<field name="sftp_file_pattern"/>
+									<field name="sftp_archive_dir"/>
+									<field name="sftp_error_dir"/>
+								</group>
+								<group string="Dane">
+									<field name="xp_lang"/>
+								</group>
+								<group string="Zdjęcie główne">
+									<field name="image_download"/>
+									<field name="image_media_code" invisible="not image_download"/>
+									<field name="image_timeout" invisible="not image_download"/>
+									<field name="image_max_mb" invisible="not image_download"/>
+								</group>
+							</group>
+						</page>
+						<page string="Eksport" name="export" invisible="direction != 'export'">
+							<group>
+								<group string="Odbiorca">
+									<field name="sftp_out_dir"/>
+									<field name="export_file_name"/>
+								</group>
+								<group string="Zawartość">
+									<field name="template_id"/>
+									<field name="export_mode"/>
+									<field name="export_domain" widget="domain" options="{'model': 'product.template'}"/>
+									<field name="export_validate_xsd"/>
+								</group>
+							</group>
+						</page>
+						<page string="Przetwarzanie" name="processing">
+							<group>
+								<group>
+									<field name="local_work_dir"/>
+									<field name="cleanup_work_files"/>
+									<field name="batch_size"/>
+								</group>
+								<group>
+									<field name="lock_timeout_minutes"/>
+									<field name="max_attempts"/>
+									<field name="retry_delay_minutes"/>
+								</group>
+							</group>
+						</page>
+					</notebook>
+				</sheet>
+				<chatter/>
+			</form>
+		</field>
+	</record>
+
+	<record id="action_xp_config" model="ir.actions.act_window">
+		<field name="name">XET Products - kanały</field>
+		<field name="res_model">communication.provider.xet_products</field>
+		<field name="view_mode">list,form</field>
+		<field name="context">{'active_test': False}</field>
+	</record>
+
+</odoo>

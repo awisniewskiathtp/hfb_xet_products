@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+	<record id="view_xp_media_type_list" model="ir.ui.view">
+		<field name="name">xp.media.type.list</field>
+		<field name="model">xp.media.type</field>
+		<field name="arch" type="xml">
+			<list string="Typy mediów" editable="bottom">
+				<field name="sequence" widget="handle"/>
+				<field name="code"/>
+				<field name="name"/>
+				<field name="active" widget="boolean_toggle"/>
+			</list>
+		</field>
+	</record>
+
+	<record id="action_xp_media_type" model="ir.actions.act_window">
+		<field name="name">Typy mediów</field>
+		<field name="res_model">xp.media.type</field>
+		<field name="view_mode">list</field>
+		<field name="context">{'active_test': False}</field>
+	</record>
+
+</odoo>

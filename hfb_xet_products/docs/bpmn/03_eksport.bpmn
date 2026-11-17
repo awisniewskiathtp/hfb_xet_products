@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Defs_XP03" targetNamespace="http://hadron.eu.com/bpmn/hfb_transfer_order_febelco" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+  <bpmn:collaboration id="Collab_XP03" name="XET Products - przebieg eksportu">
+    <bpmn:participant id="Part_W" name="Odoo 20 - worker, przebieg eksportu (communication.log)" processRef="Process_XP03">
+    </bpmn:participant>
+    <bpmn:participant id="Part_Dst" name="Serwer SFTP odbiorcy eksportu">
+    </bpmn:participant>
+    <bpmn:messageFlow id="M_Put" name="Plik XML (put)" sourceRef="T_Send" targetRef="Part_Dst" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_XP03" isExecutable="false">
+    <bpmn:startEvent id="S" name="Przebieg eksportu [select · pending]">
+      <bpmn:outgoing>Flow_S_T_Sel</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="T_Sel" name="select: produkty z filtra kanału → xp_product_ids">
+      <bpmn:incoming>Flow_S_T_Sel</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Sel_G_Any</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Any" name="Są produkty?" default="Flow_G_Any_E_None">
+      <bpmn:incoming>Flow_T_Sel_G_Any</bpmn:incoming>
+      <bpmn:outgoing>Flow_G_Any_T_Gen</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G_Any_E_None</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="E_None" name="Brak danych [nofile]">
+      <bpmn:incoming>Flow_G_Any_E_None</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="T_Gen" name="generate: XET generate_xml (rekord startowy = log)">
+      <bpmn:incoming>Flow_G_Any_T_Gen</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Gen_T_Clean</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="T_Clean" name="Post-processing: bez przestrzeni nazw, CDATA wg as_cdata">
+      <bpmn:incoming>Flow_T_Gen_T_Clean</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Clean_G_Xsd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Xsd" name="XSD w szablonie i walidacja włączona?" default="Flow_G_Xsd_G_Join">
+      <bpmn:incoming>Flow_T_Clean_G_Xsd</bpmn:incoming>
+      <bpmn:outgoing>Flow_G_Xsd_T_Xsd</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G_Xsd_G_Join</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="T_Xsd" name="Walidacja XSD [validated]">
+      <bpmn:incoming>Flow_G_Xsd_T_Xsd</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Xsd_G_Join</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Join" name="">
+      <bpmn:incoming>Flow_G_Xsd_G_Join</bpmn:incoming>
+      <bpmn:incoming>Flow_T_Xsd_G_Join</bpmn:incoming>
+      <bpmn:outgoing>Flow_G_Join_T_Send</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="T_Send" name="send: upload .part i rename, kontrola rozmiaru [sent]">
+      <bpmn:incoming>Flow_G_Join_T_Send</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Send_T_Fin</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:serviceTask id="T_Fin" name="finalize: wynik accepted, xp_cutoff = baza kolejnej delty">
+      <bpmn:incoming>Flow_T_Send_T_Fin</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Fin_E_Ok</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="E_Ok" name="Zakończony [accepted]">
+      <bpmn:incoming>Flow_T_Fin_E_Ok</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_S_T_Sel" sourceRef="S" targetRef="T_Sel" />
+    <bpmn:sequenceFlow id="Flow_T_Sel_G_Any" sourceRef="T_Sel" targetRef="G_Any" />
+    <bpmn:sequenceFlow id="Flow_G_Any_T_Gen" name="tak" sourceRef="G_Any" targetRef="T_Gen" />
+    <bpmn:sequenceFlow id="Flow_G_Any_E_None" name="nie" sourceRef="G_Any" targetRef="E_None" />
+    <bpmn:sequenceFlow id="Flow_T_Gen_T_Clean" sourceRef="T_Gen" targetRef="T_Clean" />
+    <bpmn:sequenceFlow id="Flow_T_Clean_G_Xsd" sourceRef="T_Clean" targetRef="G_Xsd" />
+    <bpmn:sequenceFlow id="Flow_G_Xsd_T_Xsd" name="tak" sourceRef="G_Xsd" targetRef="T_Xsd" />
+    <bpmn:sequenceFlow id="Flow_G_Xsd_G_Join" name="nie" sourceRef="G_Xsd" targetRef="G_Join" />
+    <bpmn:sequenceFlow id="Flow_T_Xsd_G_Join" sourceRef="T_Xsd" targetRef="G_Join" />
+    <bpmn:sequenceFlow id="Flow_G_Join_T_Send" sourceRef="G_Join" targetRef="T_Send" />
+    <bpmn:sequenceFlow id="Flow_T_Send_T_Fin" sourceRef="T_Send" targetRef="T_Fin" />
+    <bpmn:sequenceFlow id="Flow_T_Fin_E_Ok" sourceRef="T_Fin" targetRef="E_Ok" />
+    <bpmn:textAnnotation id="N_Delta"><bpmn:text>Tryb przyrostowy: write_date produktu lub mediów późniejszy niż xp_cutoff ostatniego poprawnego przebiegu kanału.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Assoc_N_Delta" sourceRef="T_Sel" targetRef="N_Delta" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Collab_XP03">
+    <bpmndi:BPMNPlane id="BPMNPlane_Collab_XP03" bpmnElement="Collab_XP03">
+      <bpmndi:BPMNShape id="Part_W_di" bpmnElement="Part_W" isHorizontal="true">
+        <dc:Bounds x="160" y="20" width="1500" height="380" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Part_Dst_di" bpmnElement="Part_Dst" isHorizontal="true">
+        <dc:Bounds x="160" y="430" width="1500" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_di" bpmnElement="S">
+        <dc:Bounds x="237" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Sel_di" bpmnElement="T_Sel">
+        <dc:Bounds x="320" y="155" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Any_di" bpmnElement="G_Any" isMarkerVisible="true">
+        <dc:Bounds x="485" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="430" y="235" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_None_di" bpmnElement="E_None">
+        <dc:Bounds x="492" y="312" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Gen_di" bpmnElement="T_Gen">
+        <dc:Bounds x="590" y="155" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Clean_di" bpmnElement="T_Clean">
+        <dc:Bounds x="740" y="155" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Xsd_di" bpmnElement="G_Xsd" isMarkerVisible="true">
+        <dc:Bounds x="915" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="900" y="135" width="90" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Xsd_di" bpmnElement="T_Xsd">
+        <dc:Bounds x="1000" y="255" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Join_di" bpmnElement="G_Join" isMarkerVisible="true">
+        <dc:Bounds x="1135" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Send_di" bpmnElement="T_Send">
+        <dc:Bounds x="1220" y="155" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Fin_di" bpmnElement="T_Fin">
+        <dc:Bounds x="1360" y="155" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Ok_di" bpmnElement="E_Ok">
+        <dc:Bounds x="1522" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Delta_di" bpmnElement="N_Delta">
+        <dc:Bounds x="250" y="50" width="330" height="55" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_S_T_Sel_di" bpmnElement="Flow_S_T_Sel">
+        <di:waypoint x="273" y="200" />
+        <di:waypoint x="320" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Sel_G_Any_di" bpmnElement="Flow_T_Sel_G_Any">
+        <di:waypoint x="440" y="200" />
+        <di:waypoint x="485" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Any_T_Gen_di" bpmnElement="Flow_G_Any_T_Gen">
+        <di:waypoint x="535" y="200" />
+        <di:waypoint x="590" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="545" y="180" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Any_E_None_di" bpmnElement="Flow_G_Any_E_None">
+        <di:waypoint x="510" y="225" />
+        <di:waypoint x="510" y="312" />
+        <bpmndi:BPMNLabel><dc:Bounds x="518" y="260" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Gen_T_Clean_di" bpmnElement="Flow_T_Gen_T_Clean">
+        <di:waypoint x="710" y="200" />
+        <di:waypoint x="740" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Clean_G_Xsd_di" bpmnElement="Flow_T_Clean_G_Xsd">
+        <di:waypoint x="860" y="200" />
+        <di:waypoint x="915" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Xsd_T_Xsd_di" bpmnElement="Flow_G_Xsd_T_Xsd">
+        <di:waypoint x="940" y="225" />
+        <di:waypoint x="940" y="300" />
+        <di:waypoint x="1000" y="300" />
+        <bpmndi:BPMNLabel><dc:Bounds x="948" y="280" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Xsd_G_Join_di" bpmnElement="Flow_G_Xsd_G_Join">
+        <di:waypoint x="965" y="200" />
+        <di:waypoint x="1135" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1040" y="180" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Xsd_G_Join_di" bpmnElement="Flow_T_Xsd_G_Join">
+        <di:waypoint x="1120" y="300" />
+        <di:waypoint x="1160" y="300" />
+        <di:waypoint x="1160" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Join_T_Send_di" bpmnElement="Flow_G_Join_T_Send">
+        <di:waypoint x="1185" y="200" />
+        <di:waypoint x="1220" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Send_T_Fin_di" bpmnElement="Flow_T_Send_T_Fin">
+        <di:waypoint x="1340" y="200" />
+        <di:waypoint x="1360" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Fin_E_Ok_di" bpmnElement="Flow_T_Fin_E_Ok">
+        <di:waypoint x="1480" y="200" />
+        <di:waypoint x="1522" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="M_Put_di" bpmnElement="M_Put">
+        <di:waypoint x="1280" y="245" />
+        <di:waypoint x="1280" y="430" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1290" y="400" width="80" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_N_Delta_di" bpmnElement="Assoc_N_Delta">
+        <di:waypoint x="380" y="155" />
+        <di:waypoint x="270" y="105" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

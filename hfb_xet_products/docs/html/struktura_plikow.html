@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Struktura plików XML – hfb_xet_products</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --ink:#1d2a2f; --muted:#56676d; --line:#d3ddd9;
+  --accent:#1e6b52; --accent-soft:#e3f0ea; --link:#245b8f; --warn:#8a5a12; --warn-soft:#fbf1df;
+  --code:#eef2f1; --diagram:#ffffff; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11191c; --surface:#172126; --ink:#e2ebe8; --muted:#9db0aa; --line:#2b3a3f;
+    --accent:#62c49c; --accent-soft:#1c3129; --link:#8fbbe8; --warn:#e2b25e; --warn-soft:#2e2717;
+    --code:#1f2b30; --diagram:#f7f9f8; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11191c; --surface:#172126; --ink:#e2ebe8; --muted:#9db0aa; --line:#2b3a3f;
+  --accent:#62c49c; --accent-soft:#1c3129; --link:#8fbbe8; --warn:#e2b25e; --warn-soft:#2e2717;
+  --code:#1f2b30; --diagram:#f7f9f8; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 "IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif}
+a{color:var(--link)}
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+nav.side{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 20px;border-right:1px solid var(--line);background:var(--surface)}
+nav.side .mod{font:600 13px/1.3 "IBM Plex Mono",ui-monospace,monospace;color:var(--accent);word-break:break-all}
+nav.side .sub{font-size:13px;color:var(--muted);margin:4px 0 22px}
+nav.side ol{list-style:none;margin:0;padding:0;counter-reset:p}
+nav.side li{counter-increment:p}
+nav.side li a{display:flex;gap:10px;padding:7px 10px;border-radius:6px;text-decoration:none;color:var(--ink);font-size:14px}
+nav.side li a::before{content:counter(p);color:var(--muted);font:12px/1.9 "IBM Plex Mono",monospace;min-width:14px}
+nav.side li a:hover{background:var(--accent-soft)}
+nav.side li a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.side .toc{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);font-size:13px}
+nav.side .toc a{display:block;padding:3px 0;color:var(--muted);text-decoration:none}
+nav.side .toc a:hover{color:var(--ink)}
+main{padding:40px 48px 80px;max-width:1280px}
+header.page h1{font-size:30px;line-height:1.2;margin:0 0 8px;font-weight:600;letter-spacing:-.01em}
+header.page p.lead{margin:0 0 28px;color:var(--muted);max-width:75ch}
+h2{font-size:21px;margin:44px 0 10px;padding-top:12px;border-top:1px solid var(--line);font-weight:600}
+h3{font-size:16px;margin:28px 0 8px;font-weight:600}
+p,ul,ol{max-width:80ch}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+.tablewrap{overflow-x:auto;margin:12px 0 18px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{background:var(--accent-soft);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+figure.dia{margin:14px 0 26px;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+figure.dia .canvas{background:var(--diagram);overflow:auto;padding:18px;line-height:normal;font-size:16px;color:#1d2a2f}
+figure.dia .canvas svg{display:block;margin:0 auto;height:auto;max-width:100%}
+figure.dia.zoom .canvas svg{max-width:none}
+figure.dia figcaption{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+figure.dia button{font:inherit;font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--ink);cursor:pointer}
+figure.dia button:focus-visible,nav a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.src{margin:0;border-top:1px solid var(--line)}
+details.src summary{cursor:pointer;padding:8px 14px;font-size:12.5px;color:var(--muted)}
+details.src pre{margin:0;padding:12px 14px;background:var(--code);overflow:auto;font-size:12px;line-height:1.45}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;max-width:80ch}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;font-size:14px;max-width:80ch}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+footer{margin-top:60px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.side{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  main{padding:28px 18px 60px}
+}
+@media print{nav.side{display:none}.layout{display:block}figure.dia{break-inside:avoid}}
+</style></head>
+<body><div class="layout">
+<nav class="side" aria-label="Dokumentacja">
+<div class="mod">hfb_xet_products</div><div class="sub">Odoo 20 – dokumentacja UML i BPMN</div>
+<ol><li><a href="index.html">Przegląd modułu</a></li><li><a href="architektura.html">Architektura</a></li><li><a href="przypadki_uzycia.html">Przypadki użycia</a></li><li><a href="model_danych.html">Model danych</a></li><li><a href="stany.html">Stany i etapy</a></li><li><a href="sekwencje.html">Sekwencje</a></li><li><a href="procesy_bpmn.html">Procesy BPMN 2.0</a></li><li><a href="struktura_plikow.html" aria-current="page">Struktura plików XML</a></li></ol><div class="toc"><a href="#format">Format</a><a href="#mapowanie">Mapowanie</a><a href="#nazwy">Nazwy plików</a></div>
+</nav>
+<main>
+<header class="page"><h1>Struktura plików XML</h1><p class="lead">Format pliku produktów, mapowanie pól i reguły nazw.</p></header>
+<h2 id="format">Format pliku</h2><pre>&lt;?xml version='1.0' encoding='utf-8'?&gt;
+&lt;Document&gt;
+  &lt;Product&gt;
+    &lt;SKU&gt;…&lt;/SKU&gt;
+    … 55 elementów …
+    &lt;Product_images&gt;
+      &lt;img url="…" size="500"/&gt;
+    &lt;/Product_images&gt;
+  &lt;/Product&gt;
+  …
+&lt;/Document&gt;</pre><div class="tablewrap"><table><thead><tr><th>Cecha</th><th>Import [kod]</th><th>Eksport [kod]</th></tr></thead><tbody><tr><td>Element główny</td><td><code>Document</code> (sprawdzany, <code>check_root</code>)</td><td><code>Document</code>, bez przestrzeni nazw</td></tr><tr><td>Rekord</td><td><code>Product</code>, czytany strumieniowo (<code>iterparse</code>)</td><td>pętla po <code>xp_product_ids</code>, sortowanie po <code>default_code</code></td></tr><tr><td>Komentarze</td><td>pomijane</td><td>brak</td></tr><tr><td>Element nieobecny</td><td>pole nie jest zmieniane</td><td>–</td></tr><tr><td>Element pusty</td><td>pole czyszczone (False / 0)</td><td>element pusty</td></tr><tr><td>Wymagane</td><td>SKU, EAN, Product_name</td><td>–</td></tr><tr><td>Kodowanie</td><td>z deklaracji pliku</td><td>UTF-8 z deklaracją XML, pretty print wg szablonu</td></tr></tbody></table></div><h2 id="mapowanie">Mapowanie elementów</h2><div class="tablewrap"><table><thead><tr><th class="num">#</th><th>Element</th><th>Typ w parserze</th><th>Pole Odoo (import)</th><th>Węzeł szablonu XET (eksport)</th></tr></thead><tbody><tr><td class="num">1</td><td><code>SKU</code></td><td>tekst</td><td><code>product.product.default_code</code> (klucz)</td><td>field: <code>default_code</code></td></tr><tr><td class="num">2</td><td><code>EAN</code></td><td>tekst</td><td><code>product.product.barcode</code> (klucz)</td><td>field: <code>barcode</code></td></tr><tr><td class="num">3</td><td><code>Symbol</code></td><td>tekst</td><td><code>xp_symbol</code></td><td>field: <code>xp_symbol</code> · CDATA</td></tr><tr><td class="num">4</td><td><code>Name_WMS</code></td><td>tekst</td><td><code>xp_name_wms</code></td><td>field: <code>xp_name_wms</code></td></tr><tr><td class="num">5</td><td><code>Producer</code></td><td>tekst</td><td><code>xp_producer</code></td><td>field: <code>xp_producer</code></td></tr><tr><td class="num">6</td><td><code>Producer_data</code></td><td>tekst</td><td><code>xp_producer_data</code></td><td>field: <code>xp_producer_data</code></td></tr><tr><td class="num">7</td><td><code>Safety</code></td><td>tekst</td><td><code>xp_safety</code></td><td>field: <code>xp_safety</code></td></tr><tr><td class="num">8</td><td><code>Product_info</code></td><td>tekst</td><td><code>xp_product_info</code></td><td>field: <code>xp_product_info</code></td></tr><tr><td class="num">9</td><td><code>Product_brand</code></td><td>tekst</td><td><code>xp_brand</code></td><td>field: <code>xp_brand</code></td></tr><tr><td class="num">10</td><td><code>Parent_category</code></td><td>tekst</td><td><code>categ_id.parent_id</code> (tworzona, gdy brak)</td><td>field: <code>categ_id.parent_id.name</code> · CDATA</td></tr><tr><td class="num">11</td><td><code>Product_category</code></td><td>tekst</td><td><code>categ_id</code> (tworzona, gdy brak)</td><td>field: <code>categ_id.name</code> · CDATA</td></tr><tr><td class="num">12</td><td><code>Price</code></td><td>liczba</td><td><code>xp_price</code></td><td>expression: <code>record.xp_fmt_num(record.xp_price, 2)</code></td></tr><tr><td class="num">13</td><td><code>Currency</code></td><td>tekst</td><td><code>xp_price_currency_id</code> (po kodzie)</td><td>field: <code>xp_price_currency_id.name</code></td></tr><tr><td class="num">14</td><td><code>SRP_price</code></td><td>liczba</td><td><code>list_price</code></td><td>expression: <code>record.xp_fmt_num(record.list_price, 2)</code></td></tr><tr><td class="num">15</td><td><code>VAT_PL</code></td><td>liczba</td><td><code>taxes_id</code> (podatek sprzedaży o stawce)</td><td>expression: <code>str(int(record.taxes_id[:1].amount)) if record.taxes_id else &#x27;&#x27;</code></td></tr><tr><td class="num">16</td><td><code>News</code></td><td>t/f → bool</td><td><code>xp_news</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_news)</code></td></tr><tr><td class="num">17</td><td><code>Top</code></td><td>t/f → bool</td><td><code>xp_top</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_top)</code></td></tr><tr><td class="num">18</td><td><code>Hit</code></td><td>t/f → bool</td><td><code>xp_hit</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_hit)</code></td></tr><tr><td class="num">19</td><td><code>Promo</code></td><td>t/f → bool</td><td><code>xp_promo</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_promo)</code></td></tr><tr><td class="num">20</td><td><code>Outlet</code></td><td>t/f → bool</td><td><code>xp_outlet</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_outlet)</code></td></tr><tr><td class="num">21</td><td><code>Product_sort_order</code></td><td>liczba całk.</td><td><code>xp_sort_order</code></td><td>expression: <code>str(record.xp_sort_order)</code></td></tr><tr><td class="num">22</td><td><code>Product_sort_order_form</code></td><td>liczba całk.</td><td><code>xp_sort_order_form</code></td><td>expression: <code>str(record.xp_sort_order_form) if record.xp_sort_order_form else &#x27;&#x27;</code></td></tr><tr><td class="num">23</td><td><code>Available_in_warehouse</code></td><td>t/f → bool</td><td><code>xp_available</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_available)</code></td></tr><tr><td class="num">24</td><td><code>Next_delivery</code></td><td>tekst</td><td><code>xp_next_delivery</code></td><td>field: <code>xp_next_delivery</code></td></tr><tr><td class="num">25</td><td><code>EAN_PCS</code></td><td>tekst</td><td><code>xp_ean_pcs</code></td><td>field: <code>xp_ean_pcs</code></td></tr><tr><td class="num">26</td><td><code>EAN_CTNS</code></td><td>tekst</td><td><code>xp_ean_ctns</code></td><td>field: <code>xp_ean_ctns</code></td></tr><tr><td class="num">27</td><td><code>CN_code</code></td><td>tekst</td><td><code>xp_cn_code</code></td><td>field: <code>xp_cn_code</code></td></tr><tr><td class="num">28</td><td><code>EPREL</code></td><td>tekst</td><td><code>xp_eprel</code></td><td>field: <code>xp_eprel</code></td></tr><tr><td class="num">29</td><td><code>CE</code></td><td>tekst</td><td><code>xp_ce</code></td><td>field: <code>xp_ce</code></td></tr><tr><td class="num">30</td><td><code>Lok</code></td><td>tekst</td><td><code>xp_lok</code></td><td>field: <code>xp_lok</code></td></tr><tr><td class="num">31</td><td><code>Ukrsepro</code></td><td>tekst</td><td><code>xp_ukrsepro</code></td><td>field: <code>xp_ukrsepro</code></td></tr><tr><td class="num">32</td><td><code>Product_netto_weight</code></td><td>liczba</td><td><code>xp_net_weight</code></td><td>expression: <code>record.xp_fmt_num(record.xp_net_weight)</code></td></tr><tr><td class="num">33</td><td><code>Package_width</code></td><td>liczba</td><td><code>xp_package_width</code></td><td>expression: <code>record.xp_fmt_num(record.xp_package_width)</code></td></tr><tr><td class="num">34</td><td><code>Package_depth</code></td><td>liczba</td><td><code>xp_package_depth</code></td><td>expression: <code>record.xp_fmt_num(record.xp_package_depth)</code></td></tr><tr><td class="num">35</td><td><code>Package_height</code></td><td>liczba</td><td><code>xp_package_height</code></td><td>expression: <code>record.xp_fmt_num(record.xp_package_height)</code></td></tr><tr><td class="num">36</td><td><code>Carton_width</code></td><td>liczba</td><td><code>xp_carton_width</code></td><td>expression: <code>record.xp_fmt_num(record.xp_carton_width)</code></td></tr><tr><td class="num">37</td><td><code>Carton_depth</code></td><td>liczba</td><td><code>xp_carton_depth</code></td><td>expression: <code>record.xp_fmt_num(record.xp_carton_depth)</code></td></tr><tr><td class="num">38</td><td><code>Carton_height</code></td><td>liczba</td><td><code>xp_carton_height</code></td><td>expression: <code>record.xp_fmt_num(record.xp_carton_height)</code></td></tr><tr><td class="num">39</td><td><code>Product_gross_weight</code></td><td>liczba</td><td><code>weight</code></td><td>expression: <code>record.xp_fmt_num(record.weight)</code></td></tr><tr><td class="num">40</td><td><code>Packaging_gross_weight</code></td><td>liczba</td><td><code>xp_packaging_gross_weight</code></td><td>expression: <code>record.xp_fmt_num(record.xp_packaging_gross_weight)</code></td></tr><tr><td class="num">41</td><td><code>Number_of_pieces_in_carton</code></td><td>liczba całk.</td><td><code>xp_qty_carton</code></td><td>expression: <code>str(record.xp_qty_carton)</code></td></tr><tr><td class="num">42</td><td><code>Number_of_pieces_on_one_pallet</code></td><td>liczba całk.</td><td><code>xp_qty_pallet</code></td><td>expression: <code>str(record.xp_qty_pallet)</code></td></tr><tr><td class="num">43</td><td><code>KGO</code></td><td>tekst</td><td><code>xp_kgo</code></td><td>field: <code>xp_kgo</code></td></tr><tr><td class="num">44</td><td><code>Hidden_eu</code></td><td>t/f → bool</td><td><code>xp_hidden_eu</code></td><td>expression: <code>record.xp_fmt_bool(record.xp_hidden_eu)</code></td></tr><tr><td class="num">45</td><td><code>Available_in_warehouse_pcs</code></td><td>liczba</td><td><code>xp_available_qty</code></td><td>expression: <code>record.xp_fmt_num(record.xp_available_qty)</code></td></tr><tr><td class="num">46</td><td><code>Product_name</code></td><td>tekst</td><td><code>name</code></td><td>field: <code>name</code> · CDATA</td></tr><tr><td class="num">47</td><td><code>Product_preliminary_description</code></td><td>HTML</td><td><code>xp_description_short</code></td><td>field: <code>xp_description_short</code> · CDATA</td></tr><tr><td class="num">48</td><td><code>Product_description</code></td><td>HTML</td><td><code>description</code></td><td>field: <code>description</code> · CDATA</td></tr><tr><td class="num">49</td><td><code>Product_first_photo</code></td><td>URL</td><td><code>xp.product.media</code> typ <code>first_photo</code></td><td>expression: <code>record.xp_media_url(&#x27;first_photo&#x27;)</code> · CDATA</td></tr><tr><td class="num">50</td><td><code>Product_package_photo</code></td><td>URL</td><td><code>xp.product.media</code> typ <code>package_photo</code></td><td>expression: <code>record.xp_media_url(&#x27;package_photo&#x27;)</code> · CDATA</td></tr><tr><td class="num">51</td><td><code>Product_youtube_link</code></td><td>URL</td><td><code>xp.product.media</code> typ <code>youtube</code></td><td>expression: <code>record.xp_media_url(&#x27;youtube&#x27;)</code> · CDATA</td></tr><tr><td class="num">52</td><td><code>Link_to_product</code></td><td>URL</td><td><code>xp.product.media</code> typ <code>product_page</code></td><td>expression: <code>record.xp_media_url(&#x27;product_page&#x27;)</code></td></tr><tr><td class="num">53</td><td><code>Link</code></td><td>tekst</td><td><code>xp_link</code></td><td>field: <code>xp_link</code></td></tr><tr><td class="num">54</td><td><code>Manual</code></td><td>URL</td><td><code>xp.product.media</code> typ <code>manual</code></td><td>expression: <code>record.xp_media_url(&#x27;manual&#x27;)</code></td></tr><tr><td class="num">55</td><td><code>Product_description_details</code></td><td>tekst surowy</td><td><code>xp_description_details</code></td><td>field: <code>xp_description_details</code> · CDATA</td></tr><tr><td class="num">56</td><td><code>Product_images</code></td><td>kolekcja img@url, img@size</td><td><code>xp.product.media</code> typ <code>gallery</code> (url, size, kolejność)</td><td>pętla <code>img</code> po <code>xp_gallery_ids</code>, atrybuty url, size</td></tr></tbody></table></div><h2 id="nazwy">Nazwy plików i katalogi</h2><div class="tablewrap"><table><thead><tr><th>Kierunek</th><th>Reguła [kod]</th></tr></thead><tbody><tr><td>Import</td><td>wzorzec <code>sftp_file_pattern</code> (fnmatch, z rozróżnieniem wielkości liter); z katalogiem archiwum najstarszy plik, bez niego najnowszy; plik nie jest pomijany, nawet gdy był już wczytany</td></tr><tr><td>Import – po przebiegu</td><td>przeniesienie do <code>sftp_archive_dir</code>; przy błędzie etapu fetch/parse do <code>sftp_error_dir</code>; przy kolizji nazwy sufiks z mtime</td></tr><tr><td>Eksport</td><td><code>export_file_name</code>, domyślnie <code>products_{code}_{timestamp}.xml</code>; zapis do <code>nazwa.part</code>, potem rename</td></tr></tbody></table></div><div class="note warn">Różnice eksportu względem pliku źródłowego w teście lokalnym [dane]: waga brutto zaokrąglona do 2 miejsc (precyzja „Stock Weight”, 439 rekordów), opisy HTML po sanitizacji Odoo (279 i 258 rekordów), kolejność produktów po SKU. Pozostałe pola zgodne wartościowo.</div>
+<footer>Stan na 16.11.2026. Źródła: kod <code>hfb_xet_products</code> 20.0.0.2.1, XET Base <code>hfb_xmlmap_exporter</code> gałąź 20.0 (commit 38223ca), Odoo 20.0 Community, testy lokalne na czystym Odoo 20 z plikiem <code>45ca7c3c-794.xml</code>, przebiegi zgłoszone przez użytkownika z instancji <code>adler_dev</code> (zrzuty ekranu i log z 16.11.2026; brak dostępu do instancji przez konektor).</footer>
+</main></div>
+<script>
+document.querySelectorAll('figure.dia button.zoom').forEach(b=>{
+  b.addEventListener('click',()=>{const f=b.closest('figure');const z=f.classList.toggle('zoom');
+    b.textContent=z?'Dopasuj do szerokości':'Rozmiar rzeczywisty';b.setAttribute('aria-pressed',z)});
+});
+</script>
+</body></html>

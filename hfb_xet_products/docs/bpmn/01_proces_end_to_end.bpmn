@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Defs_XP01" targetNamespace="http://hadron.eu.com/bpmn/hfb_transfer_order_febelco" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+  <bpmn:collaboration id="Collab_XP01" name="XET Products - proces end-to-end">
+    <bpmn:participant id="Part_Src" name="Serwer SFTP wystawcy pliku produktów">
+    </bpmn:participant>
+    <bpmn:participant id="Part_Odoo" name="Odoo 20 - hfb_xet_products" processRef="Process_XP01">
+    </bpmn:participant>
+    <bpmn:participant id="Part_Dst" name="Serwer SFTP odbiorcy eksportu">
+    </bpmn:participant>
+    <bpmn:messageFlow id="M_In" name="Plik XML produktów (SFTP get)" sourceRef="Part_Src" targetRef="W_Imp" />
+    <bpmn:messageFlow id="M_Out" name="Plik XML eksportu (SFTP put .part + rename)" sourceRef="W_Exp" targetRef="Part_Dst" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_XP01" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Process_XP01">
+      <bpmn:lane id="Lane_Admin" name="Administrator">
+        <bpmn:flowNodeRef>A_Start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>A_Run</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>A_Create</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>A_End</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Init" name="Crony inicjujące">
+        <bpmn:flowNodeRef>I_TimerImp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>I_CreateImp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>I_EndImp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>I_TimerExp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>I_CreateExp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>I_EndExp</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Worker" name="Worker (ir_cron_xp_process)">
+        <bpmn:flowNodeRef>W_Timer</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>W_Recover</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>W_Sub</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>W_End</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="A_Start" name="Potrzeba przebiegu poza harmonogramem">
+      <bpmn:outgoing>Flow_A_Start_A_Run</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="A_Run" name="Uruchom przebieg teraz [action_run_now]">
+      <bpmn:incoming>Flow_A_Start_A_Run</bpmn:incoming>
+      <bpmn:outgoing>Flow_A_Run_A_Create</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="A_Create" name="Utwórz przebieg i wywołaj dyspozytora">
+      <bpmn:incoming>Flow_A_Run_A_Create</bpmn:incoming>
+      <bpmn:outgoing>Flow_A_Create_A_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="A_End" name="Przebieg przetworzony">
+      <bpmn:incoming>Flow_A_Create_A_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:startEvent id="I_TimerImp" name="ir_cron_xp_init_import (domyślnie co 1 h)">
+      <bpmn:outgoing>Flow_I_TimerImp_I_CreateImp</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerDef_I_TimerImp" />
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="I_CreateImp" name="Utwórz przebieg importu [fetch · pending]">
+      <bpmn:incoming>Flow_I_TimerImp_I_CreateImp</bpmn:incoming>
+      <bpmn:outgoing>Flow_I_CreateImp_I_EndImp</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="I_EndImp" name="Przebieg w kolejce">
+      <bpmn:incoming>Flow_I_CreateImp_I_EndImp</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:startEvent id="I_TimerExp" name="ir_cron_xp_init_export (domyślnie co 1 dzień)">
+      <bpmn:outgoing>Flow_I_TimerExp_I_CreateExp</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerDef_I_TimerExp" />
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="I_CreateExp" name="Utwórz przebieg eksportu [select · pending]">
+      <bpmn:incoming>Flow_I_TimerExp_I_CreateExp</bpmn:incoming>
+      <bpmn:outgoing>Flow_I_CreateExp_I_EndExp</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="I_EndExp" name="Przebieg w kolejce">
+      <bpmn:incoming>Flow_I_CreateExp_I_EndExp</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:startEvent id="W_Timer" name="ir_cron_xp_process (domyślnie co 1 min)">
+      <bpmn:outgoing>Flow_W_Timer_W_Recover</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerDef_W_Timer" />
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="W_Recover" name="Odzyskaj przerwane etapy [_xp_recover_stale]">
+      <bpmn:incoming>Flow_W_Timer_W_Recover</bpmn:incoming>
+      <bpmn:outgoing>Flow_W_Recover_W_Sub</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:subProcess id="W_Sub" name="Dla każdego przebiegu pending (najpierw import), w budżecie czasu">
+      <bpmn:incoming>Flow_W_Recover_W_Sub</bpmn:incoming>
+      <bpmn:outgoing>Flow_W_Sub_W_End</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true" />
+      <bpmn:startEvent id="W_SStart" name="">
+        <bpmn:outgoing>Flow_W_SStart_W_GwDir</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:exclusiveGateway id="W_GwDir" name="Kierunek?">
+        <bpmn:incoming>Flow_W_SStart_W_GwDir</bpmn:incoming>
+        <bpmn:outgoing>Flow_W_GwDir_W_Imp</bpmn:outgoing>
+        <bpmn:outgoing>Flow_W_GwDir_W_GwWait</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="W_Imp" name="Etapy importu (diagram 02)">
+        <bpmn:incoming>Flow_W_GwDir_W_Imp</bpmn:incoming>
+        <bpmn:outgoing>Flow_W_Imp_W_GwJoin</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="W_GwWait" name="Trwa import w firmie?">
+        <bpmn:incoming>Flow_W_GwDir_W_GwWait</bpmn:incoming>
+        <bpmn:outgoing>Flow_W_GwWait_W_Exp</bpmn:outgoing>
+        <bpmn:outgoing>Flow_W_GwWait_W_Wait</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="W_Wait" name="Czeka na kolejne wywołanie">
+        <bpmn:incoming>Flow_W_GwWait_W_Wait</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:serviceTask id="W_Exp" name="Etapy eksportu (diagram 03)">
+        <bpmn:incoming>Flow_W_GwWait_W_Exp</bpmn:incoming>
+        <bpmn:outgoing>Flow_W_Exp_W_GwJoin</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="W_GwJoin" name="">
+        <bpmn:incoming>Flow_W_Imp_W_GwJoin</bpmn:incoming>
+        <bpmn:incoming>Flow_W_Exp_W_GwJoin</bpmn:incoming>
+        <bpmn:outgoing>Flow_W_GwJoin_W_SEnd</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="W_SEnd" name="">
+        <bpmn:incoming>Flow_W_GwJoin_W_SEnd</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_W_SStart_W_GwDir" sourceRef="W_SStart" targetRef="W_GwDir" />
+      <bpmn:sequenceFlow id="Flow_W_GwDir_W_Imp" name="import" sourceRef="W_GwDir" targetRef="W_Imp" />
+      <bpmn:sequenceFlow id="Flow_W_GwDir_W_GwWait" name="eksport" sourceRef="W_GwDir" targetRef="W_GwWait" />
+      <bpmn:sequenceFlow id="Flow_W_GwWait_W_Exp" name="nie" sourceRef="W_GwWait" targetRef="W_Exp" />
+      <bpmn:sequenceFlow id="Flow_W_GwWait_W_Wait" name="tak" sourceRef="W_GwWait" targetRef="W_Wait" />
+      <bpmn:sequenceFlow id="Flow_W_Imp_W_GwJoin" sourceRef="W_Imp" targetRef="W_GwJoin" />
+      <bpmn:sequenceFlow id="Flow_W_Exp_W_GwJoin" sourceRef="W_Exp" targetRef="W_GwJoin" />
+      <bpmn:sequenceFlow id="Flow_W_GwJoin_W_SEnd" sourceRef="W_GwJoin" targetRef="W_SEnd" />
+    </bpmn:subProcess>
+    <bpmn:endEvent id="W_End" name="Koniec wywołania">
+      <bpmn:incoming>Flow_W_Sub_W_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_A_Start_A_Run" sourceRef="A_Start" targetRef="A_Run" />
+    <bpmn:sequenceFlow id="Flow_A_Run_A_Create" sourceRef="A_Run" targetRef="A_Create" />
+    <bpmn:sequenceFlow id="Flow_A_Create_A_End" sourceRef="A_Create" targetRef="A_End" />
+    <bpmn:sequenceFlow id="Flow_I_TimerImp_I_CreateImp" sourceRef="I_TimerImp" targetRef="I_CreateImp" />
+    <bpmn:sequenceFlow id="Flow_I_CreateImp_I_EndImp" sourceRef="I_CreateImp" targetRef="I_EndImp" />
+    <bpmn:sequenceFlow id="Flow_I_TimerExp_I_CreateExp" sourceRef="I_TimerExp" targetRef="I_CreateExp" />
+    <bpmn:sequenceFlow id="Flow_I_CreateExp_I_EndExp" sourceRef="I_CreateExp" targetRef="I_EndExp" />
+    <bpmn:sequenceFlow id="Flow_W_Timer_W_Recover" sourceRef="W_Timer" targetRef="W_Recover" />
+    <bpmn:sequenceFlow id="Flow_W_Recover_W_Sub" sourceRef="W_Recover" targetRef="W_Sub" />
+    <bpmn:sequenceFlow id="Flow_W_Sub_W_End" sourceRef="W_Sub" targetRef="W_End" />
+    <bpmn:textAnnotation id="N_Init"><bpmn:text>Pomija kanał, który ma trwający przebieg (unikalny indeks: jeden przebieg pending/running na kanał).</bpmn:text></bpmn:textAnnotation>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Collab_XP01">
+    <bpmndi:BPMNPlane id="BPMNPlane_Collab_XP01" bpmnElement="Collab_XP01">
+      <bpmndi:BPMNShape id="Part_Src_di" bpmnElement="Part_Src" isHorizontal="true">
+        <dc:Bounds x="160" y="20" width="1500" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Part_Odoo_di" bpmnElement="Part_Odoo" isHorizontal="true">
+        <dc:Bounds x="160" y="110" width="1500" height="720" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Admin_di" bpmnElement="Lane_Admin" isHorizontal="true">
+        <dc:Bounds x="190" y="110" width="1470" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Init_di" bpmnElement="Lane_Init" isHorizontal="true">
+        <dc:Bounds x="190" y="260" width="1470" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Worker_di" bpmnElement="Lane_Worker" isHorizontal="true">
+        <dc:Bounds x="190" y="460" width="1470" height="370" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Part_Dst_di" bpmnElement="Part_Dst" isHorizontal="true">
+        <dc:Bounds x="160" y="860" width="1500" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_Sub_di" bpmnElement="W_Sub" isExpanded="true">
+        <dc:Bounds x="510" y="485" width="830" height="310" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Start_di" bpmnElement="A_Start">
+        <dc:Bounds x="262" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Run_di" bpmnElement="A_Run">
+        <dc:Bounds x="360" y="140" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Create_di" bpmnElement="A_Create">
+        <dc:Bounds x="520" y="140" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_End_di" bpmnElement="A_End">
+        <dc:Bounds x="722" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_TimerImp_di" bpmnElement="I_TimerImp">
+        <dc:Bounds x="262" y="297" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_CreateImp_di" bpmnElement="I_CreateImp">
+        <dc:Bounds x="360" y="270" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_EndImp_di" bpmnElement="I_EndImp">
+        <dc:Bounds x="562" y="297" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_TimerExp_di" bpmnElement="I_TimerExp">
+        <dc:Bounds x="262" y="392" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_CreateExp_di" bpmnElement="I_CreateExp">
+        <dc:Bounds x="360" y="365" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_EndExp_di" bpmnElement="I_EndExp">
+        <dc:Bounds x="562" y="392" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_Timer_di" bpmnElement="W_Timer">
+        <dc:Bounds x="262" y="622" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_Recover_di" bpmnElement="W_Recover">
+        <dc:Bounds x="360" y="595" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_SStart_di" bpmnElement="W_SStart">
+        <dc:Bounds x="532" y="622" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_GwDir_di" bpmnElement="W_GwDir" isMarkerVisible="true">
+        <dc:Bounds x="625" y="615" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="600" y="600" width="60" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_Imp_di" bpmnElement="W_Imp">
+        <dc:Bounds x="760" y="525" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_GwWait_di" bpmnElement="W_GwWait" isMarkerVisible="true">
+        <dc:Bounds x="795" y="675" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="838" y="722" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_Wait_di" bpmnElement="W_Wait">
+        <dc:Bounds x="802" y="747" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="690" y="758" width="105" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_Exp_di" bpmnElement="W_Exp">
+        <dc:Bounds x="950" y="655" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_GwJoin_di" bpmnElement="W_GwJoin" isMarkerVisible="true">
+        <dc:Bounds x="1115" y="615" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_SEnd_di" bpmnElement="W_SEnd">
+        <dc:Bounds x="1232" y="622" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="W_End_di" bpmnElement="W_End">
+        <dc:Bounds x="1402" y="622" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Init_di" bpmnElement="N_Init">
+        <dc:Bounds x="840" y="290" width="300" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_A_Start_A_Run_di" bpmnElement="Flow_A_Start_A_Run">
+        <di:waypoint x="298" y="185" />
+        <di:waypoint x="360" y="185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_Run_A_Create_di" bpmnElement="Flow_A_Run_A_Create">
+        <di:waypoint x="480" y="185" />
+        <di:waypoint x="520" y="185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_Create_A_End_di" bpmnElement="Flow_A_Create_A_End">
+        <di:waypoint x="640" y="185" />
+        <di:waypoint x="722" y="185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_I_TimerImp_I_CreateImp_di" bpmnElement="Flow_I_TimerImp_I_CreateImp">
+        <di:waypoint x="298" y="315" />
+        <di:waypoint x="360" y="315" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_I_CreateImp_I_EndImp_di" bpmnElement="Flow_I_CreateImp_I_EndImp">
+        <di:waypoint x="480" y="315" />
+        <di:waypoint x="562" y="315" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_I_TimerExp_I_CreateExp_di" bpmnElement="Flow_I_TimerExp_I_CreateExp">
+        <di:waypoint x="298" y="410" />
+        <di:waypoint x="360" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_I_CreateExp_I_EndExp_di" bpmnElement="Flow_I_CreateExp_I_EndExp">
+        <di:waypoint x="480" y="410" />
+        <di:waypoint x="562" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_Timer_W_Recover_di" bpmnElement="Flow_W_Timer_W_Recover">
+        <di:waypoint x="298" y="640" />
+        <di:waypoint x="360" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_Recover_W_Sub_di" bpmnElement="Flow_W_Recover_W_Sub">
+        <di:waypoint x="480" y="640" />
+        <di:waypoint x="510" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_Sub_W_End_di" bpmnElement="Flow_W_Sub_W_End">
+        <di:waypoint x="1340" y="640" />
+        <di:waypoint x="1402" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_SStart_W_GwDir_di" bpmnElement="Flow_W_SStart_W_GwDir">
+        <di:waypoint x="568" y="640" />
+        <di:waypoint x="625" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_GwDir_W_Imp_di" bpmnElement="Flow_W_GwDir_W_Imp">
+        <di:waypoint x="650" y="615" />
+        <di:waypoint x="650" y="570" />
+        <di:waypoint x="760" y="570" />
+        <bpmndi:BPMNLabel><dc:Bounds x="670" y="552" width="40" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_GwDir_W_GwWait_di" bpmnElement="Flow_W_GwDir_W_GwWait">
+        <di:waypoint x="650" y="665" />
+        <di:waypoint x="650" y="700" />
+        <di:waypoint x="795" y="700" />
+        <bpmndi:BPMNLabel><dc:Bounds x="670" y="705" width="44" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_GwWait_W_Exp_di" bpmnElement="Flow_W_GwWait_W_Exp">
+        <di:waypoint x="845" y="700" />
+        <di:waypoint x="950" y="700" />
+        <bpmndi:BPMNLabel><dc:Bounds x="900" y="680" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_GwWait_W_Wait_di" bpmnElement="Flow_W_GwWait_W_Wait">
+        <di:waypoint x="820" y="725" />
+        <di:waypoint x="820" y="747" />
+        <bpmndi:BPMNLabel><dc:Bounds x="796" y="728" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_Imp_W_GwJoin_di" bpmnElement="Flow_W_Imp_W_GwJoin">
+        <di:waypoint x="880" y="570" />
+        <di:waypoint x="1140" y="570" />
+        <di:waypoint x="1140" y="615" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_Exp_W_GwJoin_di" bpmnElement="Flow_W_Exp_W_GwJoin">
+        <di:waypoint x="1070" y="700" />
+        <di:waypoint x="1140" y="700" />
+        <di:waypoint x="1140" y="665" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_W_GwJoin_W_SEnd_di" bpmnElement="Flow_W_GwJoin_W_SEnd">
+        <di:waypoint x="1165" y="640" />
+        <di:waypoint x="1232" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="M_In_di" bpmnElement="M_In">
+        <di:waypoint x="820" y="80" />
+        <di:waypoint x="820" y="525" />
+        <bpmndi:BPMNLabel><dc:Bounds x="828" y="90" width="200" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="M_Out_di" bpmnElement="M_Out">
+        <di:waypoint x="1010" y="745" />
+        <di:waypoint x="1010" y="860" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1020" y="830" width="260" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

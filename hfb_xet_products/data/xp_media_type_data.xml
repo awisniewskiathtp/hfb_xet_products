@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+	<record id="media_type_first_photo" model="xp.media.type">
+		<field name="code">first_photo</field>
+		<field name="name">Zdjęcie główne</field>
+		<field name="sequence">10</field>
+	</record>
+	<record id="media_type_package_photo" model="xp.media.type">
+		<field name="code">package_photo</field>
+		<field name="name">Zdjęcie opakowania</field>
+		<field name="sequence">20</field>
+	</record>
+	<record id="media_type_gallery" model="xp.media.type">
+		<field name="code">gallery</field>
+		<field name="name">Galeria</field>
+		<field name="sequence">30</field>
+	</record>
+	<record id="media_type_youtube" model="xp.media.type">
+		<field name="code">youtube</field>
+		<field name="name">YouTube</field>
+		<field name="sequence">40</field>
+	</record>
+	<record id="media_type_product_page" model="xp.media.type">
+		<field name="code">product_page</field>
+		<field name="name">Strona produktu</field>
+		<field name="sequence">50</field>
+	</record>
+	<record id="media_type_manual" model="xp.media.type">
+		<field name="code">manual</field>
+		<field name="name">Instrukcja</field>
+		<field name="sequence">60</field>
+	</record>
+</odoo>

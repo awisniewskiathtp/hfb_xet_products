@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+	<record id="product_template_form_view_xp" model="ir.ui.view">
+		<field name="name">product.template.form.xet_products</field>
+		<field name="model">product.template</field>
+		<field name="inherit_id" ref="product.product_template_form_view"/>
+		<field name="arch" type="xml">
+			<xpath expr="//notebook" position="inside">
+				<page string="PIM" name="xet_products_pim">
+					<group>
+						<group string="Identyfikacja">
+							<field name="xp_symbol"/>
+							<field name="xp_name_wms"/>
+							<field name="xp_link"/>
+							<field name="xp_lok"/>
+						</group>
+						<group string="Producent i marka">
+							<field name="xp_producer"/>
+							<field name="xp_brand"/>
+							<field name="xp_producer_data"/>
+						</group>
+						<group string="Ceny">
+							<field name="xp_price"/>
+							<field name="xp_price_currency_id"/>
+						</group>
+						<group string="Flagi">
+							<field name="xp_news"/>
+							<field name="xp_top"/>
+							<field name="xp_hit"/>
+							<field name="xp_promo"/>
+							<field name="xp_outlet"/>
+							<field name="xp_hidden_eu"/>
+						</group>
+						<group string="Sortowanie i dostępność">
+							<field name="xp_sort_order"/>
+							<field name="xp_sort_order_form"/>
+							<field name="xp_available"/>
+							<field name="xp_available_qty"/>
+							<field name="xp_next_delivery"/>
+						</group>
+						<group string="Kody i certyfikaty">
+							<field name="xp_ean_pcs"/>
+							<field name="xp_ean_ctns"/>
+							<field name="xp_cn_code"/>
+							<field name="xp_eprel"/>
+							<field name="xp_ce"/>
+							<field name="xp_ukrsepro"/>
+							<field name="xp_kgo"/>
+						</group>
+						<group string="Opakowanie">
+							<field name="xp_net_weight"/>
+							<field name="xp_package_width"/>
+							<field name="xp_package_depth"/>
+							<field name="xp_package_height"/>
+							<field name="xp_packaging_gross_weight"/>
+						</group>
+						<group string="Karton i paleta">
+							<field name="xp_carton_width"/>
+							<field name="xp_carton_depth"/>
+							<field name="xp_carton_height"/>
+							<field name="xp_qty_carton"/>
+							<field name="xp_qty_pallet"/>
+						</group>
+					</group>
+					<group string="Informacje">
+						<field name="xp_safety"/>
+						<field name="xp_product_info"/>
+						<field name="xp_description_short"/>
+						<field name="xp_description_details"/>
+					</group>
+				</page>
+				<page string="Media" name="xet_products_media">
+					<group>
+						<field name="xp_image_source_url" widget="url"/>
+					</group>
+					<field name="xp_media_ids">
+						<list editable="bottom">
+							<field name="sequence" widget="handle"/>
+							<field name="media_type_id"/>
+							<field name="url" widget="url"/>
+							<field name="size"/>
+						</list>
+					</field>
+				</page>
+			</xpath>
+		</field>
+	</record>
+
+</odoo>

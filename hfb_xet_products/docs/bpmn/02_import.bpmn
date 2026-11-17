@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Defs_XP02" targetNamespace="http://hadron.eu.com/bpmn/hfb_transfer_order_febelco" exporter="Camunda Modeler" exporterVersion="5.28.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.22.0">
+  <bpmn:collaboration id="Collab_XP02" name="XET Products - przebieg importu">
+    <bpmn:participant id="Part_Src" name="Serwer SFTP wystawcy pliku produktów">
+    </bpmn:participant>
+    <bpmn:participant id="Part_W" name="Odoo 20 - worker, przebieg importu (communication.log)" processRef="Process_XP02">
+    </bpmn:participant>
+    <bpmn:participant id="Part_Img" name="Serwer zdjęć (HTTP/HTTPS)">
+    </bpmn:participant>
+    <bpmn:messageFlow id="M_Get" name="Plik XML (get)" sourceRef="Part_Src" targetRef="T_Fetch" />
+    <bpmn:messageFlow id="M_Img" name="GET obrazu" sourceRef="I_Get" targetRef="Part_Img" />
+    <bpmn:messageFlow id="M_Move" name="Przeniesienie do archiwum" sourceRef="T_Fin" targetRef="Part_Src" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_XP02" isExecutable="false">
+    <bpmn:startEvent id="S" name="Przebieg importu [fetch · pending]">
+      <bpmn:outgoing>Flow_S_T_Fetch</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="T_Fetch" name="fetch: wybierz i pobierz plik [_xp_stage_fetch]">
+      <bpmn:incoming>Flow_S_T_Fetch</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Fetch_G_File</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_File" name="Plik pasuje do wzorca?" default="Flow_G_File_E_NoFile">
+      <bpmn:incoming>Flow_T_Fetch_G_File</bpmn:incoming>
+      <bpmn:outgoing>Flow_G_File_T_Parse</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G_File_E_NoFile</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="E_NoFile" name="Brak danych [nofile]">
+      <bpmn:incoming>Flow_G_File_E_NoFile</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="T_Parse" name="parse: parser → xp.staging.line [_xp_stage_parse]">
+      <bpmn:incoming>Flow_G_File_T_Parse</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Parse_G_Xml</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Xml" name="Plik XML poprawny?" default="Flow_G_Xml_T_ErrDir">
+      <bpmn:incoming>Flow_T_Parse_G_Xml</bpmn:incoming>
+      <bpmn:outgoing>Flow_G_Xml_Sub_Apply</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G_Xml_T_ErrDir</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="T_ErrDir" name="Wynik error, plik → katalog błędów [_xp_on_run_error]">
+      <bpmn:incoming>Flow_G_Xml_T_ErrDir</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_ErrDir_E_Err</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="E_Err" name="Błąd [error]">
+      <bpmn:incoming>Flow_T_ErrDir_E_Err</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Sub_Apply" name="apply: dla każdej linii draft (partiami, savepoint na linię)">
+      <bpmn:incoming>Flow_G_Xml_Sub_Apply</bpmn:incoming>
+      <bpmn:outgoing>Flow_Sub_Apply_G_Img</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true" />
+      <bpmn:startEvent id="A_S" name="">
+        <bpmn:outgoing>Flow_A_S_A_Find</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="A_Find" name="Szukaj product.product po SKU + EAN">
+        <bpmn:incoming>Flow_A_S_A_Find</bpmn:incoming>
+        <bpmn:outgoing>Flow_A_Find_A_G</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="A_G" name="Znaleziono?">
+        <bpmn:incoming>Flow_A_Find_A_G</bpmn:incoming>
+        <bpmn:outgoing>Flow_A_G_A_Upd</bpmn:outgoing>
+        <bpmn:outgoing>Flow_A_G_A_New</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="A_Upd" name="Zapisz tylko zmienione pola [updated / unchanged]">
+        <bpmn:incoming>Flow_A_G_A_Upd</bpmn:incoming>
+        <bpmn:outgoing>Flow_A_Upd_A_E</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="A_New" name="Utwórz produkt i media [created]">
+        <bpmn:incoming>Flow_A_G_A_New</bpmn:incoming>
+        <bpmn:outgoing>Flow_A_New_A_E</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="A_E" name="">
+        <bpmn:incoming>Flow_A_Upd_A_E</bpmn:incoming>
+        <bpmn:incoming>Flow_A_New_A_E</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_A_S_A_Find" sourceRef="A_S" targetRef="A_Find" />
+      <bpmn:sequenceFlow id="Flow_A_Find_A_G" sourceRef="A_Find" targetRef="A_G" />
+      <bpmn:sequenceFlow id="Flow_A_G_A_Upd" name="tak" sourceRef="A_G" targetRef="A_Upd" />
+      <bpmn:sequenceFlow id="Flow_A_G_A_New" name="nie" sourceRef="A_G" targetRef="A_New" />
+      <bpmn:sequenceFlow id="Flow_A_Upd_A_E" sourceRef="A_Upd" targetRef="A_E" />
+      <bpmn:sequenceFlow id="Flow_A_New_A_E" sourceRef="A_New" targetRef="A_E" />
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="G_Img" name="Pobieranie zdjęć włączone?" default="Flow_G_Img_T_Fin">
+      <bpmn:incoming>Flow_Sub_Apply_G_Img</bpmn:incoming>
+      <bpmn:outgoing>Flow_G_Img_Sub_Img</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G_Img_T_Fin</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="Sub_Img" name="images: dla każdej linii processed">
+      <bpmn:incoming>Flow_G_Img_Sub_Img</bpmn:incoming>
+      <bpmn:outgoing>Flow_Sub_Img_T_Fin</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true" />
+      <bpmn:startEvent id="I_S" name="">
+        <bpmn:outgoing>Flow_I_S_I_Get</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="I_Get" name="Pobierz obraz, gdy URL inny niż xp_image_source_url">
+        <bpmn:incoming>Flow_I_S_I_Get</bpmn:incoming>
+        <bpmn:outgoing>Flow_I_Get_I_E</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="I_E" name="">
+        <bpmn:incoming>Flow_I_Get_I_E</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_I_S_I_Get" sourceRef="I_S" targetRef="I_Get" />
+      <bpmn:sequenceFlow id="Flow_I_Get_I_E" sourceRef="I_Get" targetRef="I_E" />
+    </bpmn:subProcess>
+    <bpmn:serviceTask id="T_Fin" name="finalize: liczniki, wynik, plik → archiwum">
+      <bpmn:incoming>Flow_G_Img_T_Fin</bpmn:incoming>
+      <bpmn:incoming>Flow_Sub_Img_T_Fin</bpmn:incoming>
+      <bpmn:outgoing>Flow_T_Fin_E_Ok</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="E_Ok" name="Zakończony [accepted / manual]">
+      <bpmn:incoming>Flow_T_Fin_E_Ok</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_S_T_Fetch" sourceRef="S" targetRef="T_Fetch" />
+    <bpmn:sequenceFlow id="Flow_T_Fetch_G_File" sourceRef="T_Fetch" targetRef="G_File" />
+    <bpmn:sequenceFlow id="Flow_G_File_T_Parse" name="tak" sourceRef="G_File" targetRef="T_Parse" />
+    <bpmn:sequenceFlow id="Flow_G_File_E_NoFile" name="nie" sourceRef="G_File" targetRef="E_NoFile" />
+    <bpmn:sequenceFlow id="Flow_T_Parse_G_Xml" sourceRef="T_Parse" targetRef="G_Xml" />
+    <bpmn:sequenceFlow id="Flow_G_Xml_Sub_Apply" name="tak" sourceRef="G_Xml" targetRef="Sub_Apply" />
+    <bpmn:sequenceFlow id="Flow_G_Xml_T_ErrDir" name="nie" sourceRef="G_Xml" targetRef="T_ErrDir" />
+    <bpmn:sequenceFlow id="Flow_T_ErrDir_E_Err" sourceRef="T_ErrDir" targetRef="E_Err" />
+    <bpmn:sequenceFlow id="Flow_Sub_Apply_G_Img" sourceRef="Sub_Apply" targetRef="G_Img" />
+    <bpmn:sequenceFlow id="Flow_G_Img_Sub_Img" name="tak" sourceRef="G_Img" targetRef="Sub_Img" />
+    <bpmn:sequenceFlow id="Flow_G_Img_T_Fin" name="nie" sourceRef="G_Img" targetRef="T_Fin" />
+    <bpmn:sequenceFlow id="Flow_Sub_Img_T_Fin" sourceRef="Sub_Img" targetRef="T_Fin" />
+    <bpmn:sequenceFlow id="Flow_T_Fin_E_Ok" sourceRef="T_Fin" targetRef="E_Ok" />
+    <bpmn:textAnnotation id="N_Err"><bpmn:text>Wyjątek etapu: ponowienie po retry_delay_minutes, po max_attempts wynik error. Błąd zapisu linii (apply) lub pobrania obrazu (images) nie przerywa przebiegu.</bpmn:text></bpmn:textAnnotation>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Collab_XP02">
+    <bpmndi:BPMNPlane id="BPMNPlane_Collab_XP02" bpmnElement="Collab_XP02">
+      <bpmndi:BPMNShape id="Part_Src_di" bpmnElement="Part_Src" isHorizontal="true">
+        <dc:Bounds x="160" y="20" width="2140" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Part_W_di" bpmnElement="Part_W" isHorizontal="true">
+        <dc:Bounds x="160" y="110" width="2140" height="520" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Part_Img_di" bpmnElement="Part_Img" isHorizontal="true">
+        <dc:Bounds x="160" y="660" width="2140" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sub_Apply_di" bpmnElement="Sub_Apply" isExpanded="true">
+        <dc:Bounds x="870" y="150" width="570" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sub_Img_di" bpmnElement="Sub_Img" isExpanded="true">
+        <dc:Bounds x="1560" y="170" width="400" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_di" bpmnElement="S">
+        <dc:Bounds x="237" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Fetch_di" bpmnElement="T_Fetch">
+        <dc:Bounds x="310" y="255" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_File_di" bpmnElement="G_File" isMarkerVisible="true">
+        <dc:Bounds x="475" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="470" y="250" width="70" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_NoFile_di" bpmnElement="E_NoFile">
+        <dc:Bounds x="482" y="432" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Parse_di" bpmnElement="T_Parse">
+        <dc:Bounds x="580" y="255" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Xml_di" bpmnElement="G_Xml" isMarkerVisible="true">
+        <dc:Bounds x="755" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="750" y="250" width="70" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_ErrDir_di" bpmnElement="T_ErrDir">
+        <dc:Bounds x="720" y="455" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Err_di" bpmnElement="E_Err">
+        <dc:Bounds x="892" y="482" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_S_di" bpmnElement="A_S">
+        <dc:Bounds x="892" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Find_di" bpmnElement="A_Find">
+        <dc:Bounds x="970" y="255" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_G_di" bpmnElement="A_G" isMarkerVisible="true">
+        <dc:Bounds x="1135" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1088" y="325" width="60" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Upd_di" bpmnElement="A_Upd">
+        <dc:Bounds x="1230" y="190" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_New_di" bpmnElement="A_New">
+        <dc:Bounds x="1230" y="330" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_E_di" bpmnElement="A_E">
+        <dc:Bounds x="1382" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Img_di" bpmnElement="G_Img" isMarkerVisible="true">
+        <dc:Bounds x="1475" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1460" y="330" width="80" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_S_di" bpmnElement="I_S">
+        <dc:Bounds x="1582" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_Get_di" bpmnElement="I_Get">
+        <dc:Bounds x="1670" y="255" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="I_E_di" bpmnElement="I_E">
+        <dc:Bounds x="1872" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Fin_di" bpmnElement="T_Fin">
+        <dc:Bounds x="2020" y="255" width="120" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Ok_di" bpmnElement="E_Ok">
+        <dc:Bounds x="2182" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N_Err_di" bpmnElement="N_Err">
+        <dc:Bounds x="1000" y="490" width="360" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_S_T_Fetch_di" bpmnElement="Flow_S_T_Fetch">
+        <di:waypoint x="273" y="300" />
+        <di:waypoint x="310" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Fetch_G_File_di" bpmnElement="Flow_T_Fetch_G_File">
+        <di:waypoint x="430" y="300" />
+        <di:waypoint x="475" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_File_T_Parse_di" bpmnElement="Flow_G_File_T_Parse">
+        <di:waypoint x="525" y="300" />
+        <di:waypoint x="580" y="300" />
+        <bpmndi:BPMNLabel><dc:Bounds x="560" y="280" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_File_E_NoFile_di" bpmnElement="Flow_G_File_E_NoFile">
+        <di:waypoint x="500" y="325" />
+        <di:waypoint x="500" y="432" />
+        <bpmndi:BPMNLabel><dc:Bounds x="508" y="370" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Parse_G_Xml_di" bpmnElement="Flow_T_Parse_G_Xml">
+        <di:waypoint x="700" y="300" />
+        <di:waypoint x="755" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Xml_Sub_Apply_di" bpmnElement="Flow_G_Xml_Sub_Apply">
+        <di:waypoint x="805" y="300" />
+        <di:waypoint x="870" y="300" />
+        <bpmndi:BPMNLabel><dc:Bounds x="820" y="280" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Xml_T_ErrDir_di" bpmnElement="Flow_G_Xml_T_ErrDir">
+        <di:waypoint x="780" y="325" />
+        <di:waypoint x="780" y="455" />
+        <bpmndi:BPMNLabel><dc:Bounds x="788" y="390" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_ErrDir_E_Err_di" bpmnElement="Flow_T_ErrDir_E_Err">
+        <di:waypoint x="840" y="500" />
+        <di:waypoint x="892" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_S_A_Find_di" bpmnElement="Flow_A_S_A_Find">
+        <di:waypoint x="928" y="300" />
+        <di:waypoint x="970" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_Find_A_G_di" bpmnElement="Flow_A_Find_A_G">
+        <di:waypoint x="1090" y="300" />
+        <di:waypoint x="1135" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_G_A_Upd_di" bpmnElement="Flow_A_G_A_Upd">
+        <di:waypoint x="1160" y="275" />
+        <di:waypoint x="1160" y="235" />
+        <di:waypoint x="1230" y="235" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1166" y="245" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_G_A_New_di" bpmnElement="Flow_A_G_A_New">
+        <di:waypoint x="1160" y="325" />
+        <di:waypoint x="1160" y="375" />
+        <di:waypoint x="1230" y="375" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1166" y="350" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_Upd_A_E_di" bpmnElement="Flow_A_Upd_A_E">
+        <di:waypoint x="1350" y="235" />
+        <di:waypoint x="1400" y="235" />
+        <di:waypoint x="1400" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_A_New_A_E_di" bpmnElement="Flow_A_New_A_E">
+        <di:waypoint x="1350" y="375" />
+        <di:waypoint x="1400" y="375" />
+        <di:waypoint x="1400" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Sub_Apply_G_Img_di" bpmnElement="Flow_Sub_Apply_G_Img">
+        <di:waypoint x="1440" y="300" />
+        <di:waypoint x="1475" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Img_Sub_Img_di" bpmnElement="Flow_G_Img_Sub_Img">
+        <di:waypoint x="1525" y="300" />
+        <di:waypoint x="1560" y="300" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1532" y="280" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G_Img_T_Fin_di" bpmnElement="Flow_G_Img_T_Fin">
+        <di:waypoint x="1500" y="275" />
+        <di:waypoint x="1500" y="135" />
+        <di:waypoint x="2050" y="135" />
+        <di:waypoint x="2050" y="255" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1508" y="140" width="24" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_I_S_I_Get_di" bpmnElement="Flow_I_S_I_Get">
+        <di:waypoint x="1618" y="300" />
+        <di:waypoint x="1670" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_I_Get_I_E_di" bpmnElement="Flow_I_Get_I_E">
+        <di:waypoint x="1790" y="300" />
+        <di:waypoint x="1872" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Sub_Img_T_Fin_di" bpmnElement="Flow_Sub_Img_T_Fin">
+        <di:waypoint x="1960" y="300" />
+        <di:waypoint x="2020" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_T_Fin_E_Ok_di" bpmnElement="Flow_T_Fin_E_Ok">
+        <di:waypoint x="2140" y="300" />
+        <di:waypoint x="2182" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="M_Get_di" bpmnElement="M_Get">
+        <di:waypoint x="370" y="80" />
+        <di:waypoint x="370" y="255" />
+        <bpmndi:BPMNLabel><dc:Bounds x="378" y="100" width="80" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="M_Img_di" bpmnElement="M_Img">
+        <di:waypoint x="1730" y="345" />
+        <di:waypoint x="1730" y="660" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1738" y="610" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="M_Move_di" bpmnElement="M_Move">
+        <di:waypoint x="2110" y="255" />
+        <di:waypoint x="2110" y="80" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2118" y="100" width="140" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

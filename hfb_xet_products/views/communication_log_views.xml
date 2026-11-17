@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+	<record id="view_communication_log_form_xp" model="ir.ui.view">
+		<field name="name">communication.log.form.xet_products</field>
+		<field name="model">communication.log</field>
+		<field name="inherit_id" ref="hfb_xmlmap_exporter.view_communication_log_form"/>
+		<field name="arch" type="xml">
+			<xpath expr="//notebook" position="inside">
+				<page string="XET Products" name="xet_products" invisible="not xp_config_id">
+					<group>
+						<group string="Przebieg">
+							<field name="xp_config_id"/>
+							<field name="xp_direction"/>
+							<field name="xp_stage"/>
+							<field name="xp_result"/>
+							<field name="xp_lock_at"/>
+							<field name="xp_attempts"/>
+							<field name="xp_next_try_at"/>
+						</group>
+						<group string="Liczniki">
+							<field name="xp_count_total"/>
+							<field name="xp_count_created" invisible="xp_direction != 'import'"/>
+							<field name="xp_count_updated" invisible="xp_direction != 'import'"/>
+							<field name="xp_count_unchanged" invisible="xp_direction != 'import'"/>
+							<field name="xp_count_error" invisible="xp_direction != 'import'"/>
+							<field name="xp_count_images" invisible="xp_direction != 'import'"/>
+							<field name="xp_count_image_errors" invisible="xp_direction != 'import'"/>
+							<field name="xp_cutoff" invisible="xp_direction != 'export'"/>
+						</group>
+						<group string="Plik">
+							<field name="xp_remote_path"/>
+							<field name="xp_source_signature" invisible="xp_direction != 'import'"/>
+						</group>
+					</group>
+					<field name="xp_last_error" invisible="not xp_last_error"/>
+					<field name="xp_staging_ids" invisible="xp_direction != 'import'" readonly="1">
+						<list decoration-danger="state == 'error'" decoration-warning="image_state == 'error'" limit="80">
+							<field name="sequence"/>
+							<field name="sku"/>
+							<field name="ean"/>
+							<field name="state"/>
+							<field name="action"/>
+							<field name="image_state" optional="show"/>
+							<field name="product_tmpl_id"/>
+							<field name="error_message"/>
+						</list>
+					</field>
+					<field name="xp_product_ids" invisible="xp_direction != 'export'" readonly="1">
+						<list limit="80">
+							<field name="default_code"/>
+							<field name="name"/>
+							<field name="barcode"/>
+						</list>
+					</field>
+				</page>
+			</xpath>
+		</field>
+	</record>
+
+	<!--
+		XET Base nie definiuje widoku wyszukiwania communication.log
+		(search_view_id w action_communication_logs jest zakomentowany),
+		więc ten widok staje się domyślnym wyszukiwaniem "Logi komunikacji".
+	-->
+	<record id="view_communication_log_search_xp" model="ir.ui.view">
+		<field name="name">communication.log.search.xet_products</field>
+		<field name="model">communication.log</field>
+		<field name="arch" type="xml">
+			<search string="Logi komunikacji">
+				<field name="file_name"/>
+				<field name="external_id"/>
+				<field name="provider_id"/>
+				<field name="xp_config_id"/>
+				<filter name="filter_xet_products" string="XET Products" domain="[('xp_config_id', '!=', False)]"/>
+				<separator/>
+				<filter name="filter_xp_import" string="Import produktów" domain="[('xp_config_id.direction', '=', 'import')]"/>
+				<filter name="filter_xp_export" string="Eksport produktów" domain="[('xp_config_id.direction', '=', 'export')]"/>
+				<separator/>
+				<filter name="filter_xp_active" string="W toku" domain="[('xp_result', 'in', ('pending', 'running'))]"/>
+				<filter name="filter_xp_manual" string="Do przejrzenia" domain="[('xp_result', '=', 'manual')]"/>
+				<filter name="filter_xp_error" string="Błąd" domain="[('xp_result', '=', 'error')]"/>
+				<filter name="filter_xp_nofile" string="Bez danych" domain="[('xp_result', '=', 'nofile')]"/>
+				<group>
+					<filter name="group_provider" string="Provider" context="{'group_by': 'provider_id'}"/>
+					<filter name="group_xp_config" string="Kanał XET Products" context="{'group_by': 'xp_config_id'}"/>
+					<filter name="group_xp_stage" string="Etap" context="{'group_by': 'xp_stage'}"/>
+					<filter name="group_xp_result" string="Wynik" context="{'group_by': 'xp_result'}"/>
+					<filter name="group_state" string="Stan" context="{'group_by': 'state'}"/>
+					<filter name="group_create_date" string="Data" context="{'group_by': 'create_date:day'}"/>
+				</group>
+			</search>
+		</field>
+	</record>
+
+</odoo>

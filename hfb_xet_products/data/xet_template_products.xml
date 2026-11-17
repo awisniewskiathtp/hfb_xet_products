@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Szablon XET: eksport produktów w formacie pliku ADLER (<Document>/<Product>).
+  Rekord startowy: communication.log (pętla po xp_product_ids).
+  Wygenerowany skryptem; noupdate - zmiany użytkownika nie są nadpisywane.
+-->
+<odoo noupdate="1">
+	<record id="xet_template_products" model="xml.export.template">
+		<field name="name">odoo-20.0-xet_products-1.0-products-1.0.0</field>
+		<field name="description">Eksport produktów (format ADLER: Document/Product). Rekord startowy: communication.log.</field>
+		<field name="model_id" ref="hfb_xmlmap_exporter.model_communication_log"/>
+		<field name="root_tag">Document</field>
+		<field name="namespace" eval="False"/>
+		<field name="ns_prefix" eval="False"/>
+		<field name="include_xsi" eval="False"/>
+		<field name="validate_on_export" eval="False"/>
+		<field name="pretty_print" eval="True"/>
+		<field name="state">ready</field>
+	</record>
+
+	<record id="xet_node_document" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="name">Document</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">0</field>
+		<field name="value_source">none</field>
+	</record>
+	<record id="xet_node_product" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_document"/>
+		<field name="name">Product</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">10</field>
+		<field name="loop_mode">many2many</field>
+		<field name="loop_rel_field_id" ref="field_communication_log__xp_product_ids"/>
+		<field name="loop_order">default_code</field>
+		<field name="value_source">none</field>
+	</record>
+	<record id="xet_node_p_sku" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">SKU</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">10</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">default_code</field>
+	</record>
+	<record id="xet_node_p_ean" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">EAN</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">20</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">barcode</field>
+	</record>
+	<record id="xet_node_p_symbol" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Symbol</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">30</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_symbol</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_name_wms" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Name_WMS</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">40</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_name_wms</field>
+	</record>
+	<record id="xet_node_p_producer" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Producer</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">50</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_producer</field>
+	</record>
+	<record id="xet_node_p_producer_data" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Producer_data</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">60</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_producer_data</field>
+	</record>
+	<record id="xet_node_p_safety" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Safety</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">70</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_safety</field>
+	</record>
+	<record id="xet_node_p_product_info" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_info</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">80</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_product_info</field>
+	</record>
+	<record id="xet_node_p_product_brand" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_brand</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">90</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_brand</field>
+	</record>
+	<record id="xet_node_p_parent_category" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Parent_category</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">100</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">categ_id.parent_id.name</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_category" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_category</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">110</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">categ_id.name</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_price" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Price</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">120</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_price, 2)</field>
+	</record>
+	<record id="xet_node_p_currency" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Currency</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">130</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_price_currency_id.name</field>
+	</record>
+	<record id="xet_node_p_srp_price" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">SRP_price</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">140</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.list_price, 2)</field>
+	</record>
+	<record id="xet_node_p_vat_pl" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">VAT_PL</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">150</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">str(int(record.taxes_id[:1].amount)) if record.taxes_id else ''</field>
+	</record>
+	<record id="xet_node_p_news" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">News</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">160</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_news)</field>
+	</record>
+	<record id="xet_node_p_top" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Top</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">170</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_top)</field>
+	</record>
+	<record id="xet_node_p_hit" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Hit</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">180</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_hit)</field>
+	</record>
+	<record id="xet_node_p_promo" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Promo</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">190</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_promo)</field>
+	</record>
+	<record id="xet_node_p_outlet" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Outlet</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">200</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_outlet)</field>
+	</record>
+	<record id="xet_node_p_product_sort_order" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_sort_order</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">210</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">str(record.xp_sort_order)</field>
+	</record>
+	<record id="xet_node_p_product_sort_order_form" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_sort_order_form</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">220</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">str(record.xp_sort_order_form) if record.xp_sort_order_form else ''</field>
+	</record>
+	<record id="xet_node_p_available_in_warehouse" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Available_in_warehouse</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">230</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_available)</field>
+	</record>
+	<record id="xet_node_p_next_delivery" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Next_delivery</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">240</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_next_delivery</field>
+	</record>
+	<record id="xet_node_p_ean_pcs" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">EAN_PCS</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">250</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_ean_pcs</field>
+	</record>
+	<record id="xet_node_p_ean_ctns" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">EAN_CTNS</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">260</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_ean_ctns</field>
+	</record>
+	<record id="xet_node_p_cn_code" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">CN_code</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">270</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_cn_code</field>
+	</record>
+	<record id="xet_node_p_eprel" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">EPREL</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">280</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_eprel</field>
+	</record>
+	<record id="xet_node_p_ce" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">CE</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">290</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_ce</field>
+	</record>
+	<record id="xet_node_p_lok" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Lok</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">300</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_lok</field>
+	</record>
+	<record id="xet_node_p_ukrsepro" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Ukrsepro</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">310</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_ukrsepro</field>
+	</record>
+	<record id="xet_node_p_product_netto_weight" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_netto_weight</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">320</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_net_weight)</field>
+	</record>
+	<record id="xet_node_p_package_width" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Package_width</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">330</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_package_width)</field>
+	</record>
+	<record id="xet_node_p_package_depth" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Package_depth</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">340</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_package_depth)</field>
+	</record>
+	<record id="xet_node_p_package_height" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Package_height</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">350</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_package_height)</field>
+	</record>
+	<record id="xet_node_p_carton_width" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Carton_width</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">360</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_carton_width)</field>
+	</record>
+	<record id="xet_node_p_carton_depth" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Carton_depth</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">370</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_carton_depth)</field>
+	</record>
+	<record id="xet_node_p_carton_height" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Carton_height</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">380</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_carton_height)</field>
+	</record>
+	<record id="xet_node_p_product_gross_weight" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_gross_weight</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">390</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.weight)</field>
+	</record>
+	<record id="xet_node_p_packaging_gross_weight" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Packaging_gross_weight</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">400</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_packaging_gross_weight)</field>
+	</record>
+	<record id="xet_node_p_number_of_pieces_in_carton" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Number_of_pieces_in_carton</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">410</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">str(record.xp_qty_carton)</field>
+	</record>
+	<record id="xet_node_p_number_of_pieces_on_one_pallet" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Number_of_pieces_on_one_pallet</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">420</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">str(record.xp_qty_pallet)</field>
+	</record>
+	<record id="xet_node_p_kgo" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">KGO</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">430</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_kgo</field>
+	</record>
+	<record id="xet_node_p_hidden_eu" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Hidden_eu</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">440</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_bool(record.xp_hidden_eu)</field>
+	</record>
+	<record id="xet_node_p_available_in_warehouse_pcs" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Available_in_warehouse_pcs</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">450</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_fmt_num(record.xp_available_qty)</field>
+	</record>
+	<record id="xet_node_p_product_name" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_name</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">460</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">name</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_preliminary_description" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_preliminary_description</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">470</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_description_short</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_description" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_description</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">480</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">description</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_first_photo" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_first_photo</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">490</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_media_url('first_photo')</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_package_photo" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_package_photo</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">500</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_media_url('package_photo')</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_youtube_link" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_youtube_link</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">510</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_media_url('youtube')</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_link_to_product" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Link_to_product</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">520</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_media_url('product_page')</field>
+	</record>
+	<record id="xet_node_p_link" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Link</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">530</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_link</field>
+	</record>
+	<record id="xet_node_p_manual" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Manual</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">540</field>
+		<field name="value_source">expression</field>
+		<field name="value_expr">record.xp_media_url('manual')</field>
+	</record>
+	<record id="xet_node_p_product_description_details" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_description_details</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">550</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">xp_description_details</field>
+		<field name="as_cdata" eval="True"/>
+	</record>
+	<record id="xet_node_p_product_images" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_product"/>
+		<field name="name">Product_images</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">560</field>
+		<field name="value_source">none</field>
+	</record>
+	<record id="xet_node_img" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_p_product_images"/>
+		<field name="name">img</field>
+		<field name="node_kind">element</field>
+		<field name="sequence">10</field>
+		<field name="loop_mode">many2many</field>
+		<field name="loop_rel_field_id" ref="field_product_template__xp_gallery_ids"/>
+		<field name="value_source">none</field>
+	</record>
+	<record id="xet_node_img_url" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_img"/>
+		<field name="name">url</field>
+		<field name="node_kind">attribute</field>
+		<field name="sequence">10</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">url</field>
+	</record>
+	<record id="xet_node_img_size" model="xml.export.node">
+		<field name="template_id" ref="xet_template_products"/>
+		<field name="parent_id" ref="xet_node_img"/>
+		<field name="name">size</field>
+		<field name="node_kind">attribute</field>
+		<field name="sequence">20</field>
+		<field name="value_source">field</field>
+		<field name="src_rel_path">size</field>
+	</record>
+</odoo>

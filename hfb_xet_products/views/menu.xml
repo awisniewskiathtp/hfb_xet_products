@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+	<!-- Konfiguracja / Konfiguracja Dostawców / Provider XET Products -->
+	<menuitem id="menu_xp_config"
+			  name="Provider XET Products"
+			  parent="hfb_xmlmap_exporter.menu_communication_provider"
+			  action="action_xp_config"
+			  sequence="30"
+			  groups="base.group_system"/>
+
+	<!-- Konfiguracja / XET Products -->
+	<menuitem id="menu_xp_config_section"
+			  name="XET Products"
+			  parent="hfb_xmlmap_exporter.menu_xml_export_config"
+			  sequence="40"
+			  groups="base.group_system"/>
+
+	<menuitem id="menu_xp_media_type"
+			  name="Typy mediów"
+			  parent="menu_xp_config_section"
+			  action="action_xp_media_type"
+			  sequence="10"/>
+
+</odoo>
