@@ -26,6 +26,7 @@ Numery linii odnoszą się do plików z archiwum `hfb_xet_products.zip` w wersji
 - **Gdzie:** `models/communication_log.py` l. 72 i 83 (`tracking=True` dla `xp_stage`, `xp_result`); `models/communication_log_import.py` l. 520 (`"message": summary`) i l. 522 (`self._xp_post(summary)`); XET Base `models/communication_log.py` l. 70 (`message` z `tracking=True`).
 - **Stan:** każda zmiana etapu i wyniku daje osobny wpis śledzenia; podsumowanie przebiegu pojawia się dwa razy (śledzenie pola „Opis zdarzenia” i wpis `message_post`).
 - **Dane adler_dev:** widoczne na zrzucie przebiegu log 5 (16.11.2026).
+- **Dane adler_dev (17.11.2026, wersja 20.0.0.3.0):** dubel widoczny także w przebiegach log 9–11 (podsumowanie importu), w przebiegu „brak pliku” (komunikat „Brak plików pasujących do wzorca…”) i w log 13 (komunikat błędu etapu parse).
 
 ### ST-02 · „Uruchom przebieg teraz” wykonuje etapy w żądaniu HTTP · [kod] [hipoteza]
 - **Gdzie:** `models/xp_config.py` l. 233 (`_cron_xp_process(log_ids=log.ids)` w `action_run_now`); `models/communication_log.py` l. 46 (`DEFAULT_BUDGET_SECONDS = 240`).
@@ -66,6 +67,21 @@ Numery linii odnoszą się do plików z archiwum `hfb_xet_products.zip` w wersji
 ### ST-10 · Wybór pliku bez katalogu archiwum · [kod]
 - **Gdzie:** `models/communication_log_import.py` l. 91 (`entries[0] if config.sftp_archive_dir else entries[-1]`).
 - **Stan:** bez archiwum wczytywany jest zawsze najnowszy plik; starsze pliki w katalogu wejściowym nie są importowane.
+
+### ST-11 · Przebieg bez szablonu przy błędzie parsowania · [kod] [dane]
+- **Gdzie (20.0.0.3.0):** `models/communication_log_import.py`, `_xp_stage_parse` – `template_id` zapisywany na przebiegu dopiero po przeczytaniu wszystkich rekordów (`self.write({... "template_id": template.id})`); błąd korzenia lub składni XML przerywa etap wcześniej.
+- **Stan:** przy błędzie parsowania pole „Szablon” przebiegu jest puste; nie widać, którym szablonem próbowano czytać plik.
+- **Dane adler_dev:** log 13 (17.11.2026), plik `test-0001.xml`.
+
+### ST-12 · Komunikat błędu z nazwą pliku roboczego · [kod] [dane]
+- **Gdzie (20.0.0.3.0):** `models/communication_log_import.py`, `_xp_stage_fetch` (plik lokalny `f"{self.id}_{attr.filename}"`) i `_xp_stage_parse` (`XpFatalError(f"Niepoprawny plik XML: {exc}")` – tekst wyjątku lxml zawiera ścieżkę lokalną).
+- **Stan:** komunikat podaje nazwę pliku roboczego z prefiksem id przebiegu, a nie nazwę zdalną.
+- **Dane adler_dev:** log 13 – „…line 1, column 1 (13_test-0001.xml, line 1)” zamiast `test-0001.xml`.
+
+### ST-13 · Zakładka „Dane techniczne KSeF” w przebiegach XET Products · [dane]
+- **Gdzie:** widok formularza `communication.log` z XET Base.
+- **Stan:** zakładka z polami KSeF (Session ID, Access Token, HTTP Status itd.) jest widoczna i pusta w przebiegach XET Products.
+- **Dane adler_dev:** log 11 (17.11.2026).
 
 ---
 
