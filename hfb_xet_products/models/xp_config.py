@@ -30,10 +30,10 @@
 # solutions contained herein are not covered by this license and remain the
 # property of the author.
 #################################################################################
-"""	@version 20.0.0.2.1
+"""	@version 20.0.0.3.0
 	@owner  Hadron for Business Sp. z o.o.
 	@author Andrzej Wiśniewski (warp3r)
-	@date   2026-11-16
+	@date   2026-11-17
 
 	communication.provider.xet_products - konfiguracja kanału (plugin providera).
 
@@ -109,9 +109,9 @@ class CommunicationProviderXetProducts(models.Model):
 	sftp_file_pattern = fields.Char(string="Wzorzec nazwy pliku", default="*.xml")
 	sftp_archive_dir = fields.Char(
 		string="Katalog archiwum",
-		help="Po imporcie plik jest przenoszony tutaj. Puste = plik zostaje "
-			 "na miejscu (ponowny import tego samego pliku jest pomijany "
-			 "na podstawie nazwy, rozmiaru i daty modyfikacji).",
+		help="Po imporcie plik jest przenoszony tutaj, a pliki są wczytywane "
+			 "od najstarszego. Puste = plik zostaje na miejscu i każdy przebieg "
+			 "wczytuje najnowszy plik (także ten sam ponownie).",
 	)
 	sftp_error_dir = fields.Char(
 		string="Katalog błędów",
@@ -142,8 +142,10 @@ class CommunicationProviderXetProducts(models.Model):
 	)
 	template_id = fields.Many2one(
 		"xml.export.template", string="Szablon XET",
-		help="Szablon z rekordem startowym communication.log "
-			 "(pętla po polu xp_product_ids).",
+		domain="[('xp_usage', '=', direction)]",
+		help="Eksport: szablon z rekordem startowym communication.log (pętla po "
+			 "polu xp_product_ids). Import: szablon z modelem product.template "
+			 "opisujący odczyt pliku; puste = domyślny szablon importu modułu.",
 	)
 	export_mode = fields.Selection(
 		[("full", "Pełny"), ("delta", "Przyrostowy (zmiany od ostatniej wysyłki)")],

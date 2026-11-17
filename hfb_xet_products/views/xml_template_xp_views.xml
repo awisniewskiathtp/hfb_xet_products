@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Rozszerzenie formularzy XET Base (bez zmian w module bazowym):
+	przeznaczenie szablonu i rola węzła przy imporcie XET Products.
+-->
+<odoo>
+
+	<record id="view_xml_export_template_form_xp" model="ir.ui.view">
+		<field name="name">xml.export.template.form.xet_products</field>
+		<field name="model">xml.export.template</field>
+		<field name="inherit_id" ref="hfb_xmlmap_exporter.view_xml_export_template_form"/>
+		<field name="arch" type="xml">
+			<xpath expr="//field[@name='model_id']" position="after">
+				<field name="xp_usage"/>
+			</xpath>
+		</field>
+	</record>
+
+	<record id="view_xml_export_node_form_xp" model="ir.ui.view">
+		<field name="name">xml.export.node.form.xet_products</field>
+		<field name="model">xml.export.node</field>
+		<field name="inherit_id" ref="hfb_xmlmap_exporter.view_xml_export_node_form"/>
+		<field name="arch" type="xml">
+			<xpath expr="//notebook" position="inside">
+				<page string="Import XET Products" name="xet_products_import" invisible="xp_template_usage != 'import'">
+					<group>
+						<group>
+							<field name="xp_template_usage" invisible="1"/>
+							<field name="xp_import_role"/>
+							<field name="xp_media_type_id" invisible="xp_import_role != 'media'"
+								   required="xp_import_role == 'media'"/>
+						</group>
+						<group>
+							<div class="text-muted" colspan="2">
+								Wartość z elementu (lub atrybutu) wskazanego przez XPath trafia do pola
+								z „RelPath”. Ścieżka przez relację (np. <code>categ_id.name</code>) oznacza
+								wyszukanie rekordu po wartości; dla kategorii brakujący rekord jest tworzony,
+								a <code>parent_id</code> w ścieżce buduje hierarchię. Węzeł z pętlą wyznacza
+								rekord produktu. „Wymagany (biznesowo)”, „Bool TRUE/FALSE” i „Strip whitespace”
+								działają także przy imporcie.
+							</div>
+						</group>
+					</group>
+				</page>
+			</xpath>
+		</field>
+	</record>
+
+	<record id="view_xml_export_node_form_edit_xp" model="ir.ui.view">
+		<field name="name">xml.export.node.form.edit.xet_products</field>
+		<field name="model">xml.export.node</field>
+		<field name="inherit_id" ref="hfb_xmlmap_exporter.view_xml_export_node_form_edit"/>
+		<field name="arch" type="xml">
+			<xpath expr="//sheet" position="inside">
+				<group string="Import XET Products" invisible="xp_template_usage != 'import'">
+					<field name="xp_template_usage" invisible="1"/>
+					<field name="xp_import_role"/>
+					<field name="xp_media_type_id" invisible="xp_import_role != 'media'"
+						   required="xp_import_role == 'media'"/>
+				</group>
+			</xpath>
+		</field>
+	</record>
+
+</odoo>

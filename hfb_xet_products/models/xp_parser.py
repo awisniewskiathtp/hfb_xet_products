@@ -30,214 +30,157 @@
 # solutions contained herein are not covered by this license and remain the
 # property of the author.
 #################################################################################
-"""	@version 20.0.0.2.1
+"""	@version 20.0.0.3.0
 	@owner  Hadron for Business Sp. z o.o.
 	@author Andrzej Wiśniewski (warp3r)
-	@date   2026-11-16
+	@date   2026-11-17
 
 
-	Parser pliku XML produktów - bez ORM.
+	Parser pliku XML produktów - bez ORM, sterowany specyfikacją.
 
-	Format (plik ADLER, np. 45ca7c3c-794.xml):
-		<Document>
-		  <Product> ... 56 pól ... <Product_images><img url=".." size=".."/></Product_images>
-		</Product>
-		...
+	Specyfikację (dict) buduje warstwa ORM z szablonu importu XET
+	(communication_log_import._xp_import_spec); od wersji 20.0.0.3.0 nie ma
+	tu stałego mapowania pól.
 
-	Czytanie strumieniowe (lxml.iterparse) z czyszczeniem przetworzonych
-	elementów. Każdy <Product> daje jeden ParseResult. Błędy danych nie
-	rzucają wyjątków - są zwracane jako status 'error' z opisem.
+	Specyfikacja:
+		{
+		  "root": "Document",                # oczekiwany element główny
+		  "record": "Product",               # element rekordu (węzeł z pętlą)
+		  "entries": [                       # wartości pól
+			{"node": "SKU", "rel": "SKU", "attr": None,
+			 "target": "default_code",       # pole product.template
+			 "relation": None,               # albo (pole_relacji, ścieżka_podrzędna)
+			 "ftype": "char",                # typ pola docelowego
+			 "role": "key" | "field",
+			 "required": True, "strip": True,
+			 "bool_true": "t", "bool_false": "f"},
+			...],
+		  "media": [                         # linki xp.product.media
+			{"node": "Product_first_photo", "rel": "Product_first_photo", "attr": None,
+			 "code": "first_photo", "loop": False},
+			{"node": "img", "rel": "Product_images/img", "code": "gallery", "loop": True,
+			 "url_attr": "url", "size_attr": "size"},
+			...],
+		}
 
-	Mapowanie pól: FIELD_SPEC (element XML -> klucz payloadu -> rodzaj).
-	Klucze payloadu są nazwami pól Odoo, poza kluczami specjalnymi
-	obsługiwanymi w etapie apply (sku, ean, parent_category, product_category,
-	currency, vat, media).
+	Wynik dla rekordu (ParseResult.data):
+		{"key": {pole: wartość}, "vals": {pole: wartość},
+		 "rel": {pole_relacji: {ścieżka_podrzędna: tekst}}, "media": [...]}
+
+	Element nieobecny w rekordzie: pole nie jest zmieniane. Element pusty:
+	pole czyszczone (tekst False, liczba 0). Czytanie strumieniowe
+	(lxml.iterparse) z czyszczeniem przetworzonych elementów; błędy danych
+	są zwracane jako status 'error', bez wyjątków.
 """
 from typing import NamedTuple, Optional
 
 from lxml import etree
 
-PRODUCT_TAG = "Product"
-
-# (element XML, klucz payloadu, rodzaj)
-# rodzaje: str, text, int, float, bool_tf, html, raw
-FIELD_SPEC = [
-	# identyfikacja
-	("SKU", "sku", "str"),
-	("EAN", "ean", "str"),
-	("Symbol", "xp_symbol", "str"),
-	("Name_WMS", "xp_name_wms", "str"),
-	("Link", "xp_link", "str"),
-	# producent i marka
-	("Producer", "xp_producer", "str"),
-	("Producer_data", "xp_producer_data", "text"),
-	("Product_brand", "xp_brand", "str"),
-	("Safety", "xp_safety", "text"),
-	("Product_info", "xp_product_info", "text"),
-	# kategorie, ceny, podatek
-	("Parent_category", "parent_category", "str"),
-	("Product_category", "product_category", "str"),
-	("Price", "xp_price", "float"),
-	("Currency", "currency", "str"),
-	("SRP_price", "list_price", "float"),
-	("VAT_PL", "vat", "float"),
-	# flagi
-	("News", "xp_news", "bool_tf"),
-	("Top", "xp_top", "bool_tf"),
-	("Hit", "xp_hit", "bool_tf"),
-	("Promo", "xp_promo", "bool_tf"),
-	("Outlet", "xp_outlet", "bool_tf"),
-	("Hidden_eu", "xp_hidden_eu", "bool_tf"),
-	# sortowanie i dostępność
-	("Product_sort_order", "xp_sort_order", "int"),
-	("Product_sort_order_form", "xp_sort_order_form", "int"),
-	("Available_in_warehouse", "xp_available", "bool_tf"),
-	("Available_in_warehouse_pcs", "xp_available_qty", "float"),
-	("Next_delivery", "xp_next_delivery", "str"),
-	# kody i certyfikaty
-	("EAN_PCS", "xp_ean_pcs", "str"),
-	("EAN_CTNS", "xp_ean_ctns", "str"),
-	("CN_code", "xp_cn_code", "str"),
-	("EPREL", "xp_eprel", "str"),
-	("CE", "xp_ce", "str"),
-	("Ukrsepro", "xp_ukrsepro", "str"),
-	("Lok", "xp_lok", "str"),
-	("KGO", "xp_kgo", "str"),
-	# logistyka
-	("Product_netto_weight", "xp_net_weight", "float"),
-	("Product_gross_weight", "weight", "float"),
-	("Package_width", "xp_package_width", "float"),
-	("Package_depth", "xp_package_depth", "float"),
-	("Package_height", "xp_package_height", "float"),
-	("Carton_width", "xp_carton_width", "float"),
-	("Carton_depth", "xp_carton_depth", "float"),
-	("Carton_height", "xp_carton_height", "float"),
-	("Packaging_gross_weight", "xp_packaging_gross_weight", "float"),
-	("Number_of_pieces_in_carton", "xp_qty_carton", "int"),
-	("Number_of_pieces_on_one_pallet", "xp_qty_pallet", "int"),
-	# nazwy i opisy
-	("Product_name", "name", "str"),
-	("Product_preliminary_description", "xp_description_short", "html"),
-	("Product_description", "description", "html"),
-	("Product_description_details", "xp_description_details", "raw"),
-]
-
-# Pojedyncze linki -> typ medium (xp.media.type.code)
-MEDIA_SPEC = [
-	("Product_first_photo", "first_photo"),
-	("Product_package_photo", "package_photo"),
-	("Product_youtube_link", "youtube"),
-	("Link_to_product", "product_page"),
-	("Manual", "manual"),
-]
-GALLERY_TAG = "Product_images"
-GALLERY_ITEM_TAG = "img"
-GALLERY_CODE = "gallery"
-
-REQUIRED_KEYS = ("sku", "ean", "name")
+TEXT_TYPES = ("char", "text", "selection")
+TRUE_VALUES = ("t", "true", "1", "y", "yes", "tak")
+FALSE_VALUES = ("f", "false", "0", "n", "no", "nie", "")
 
 
 class ParseResult(NamedTuple):
 	index: int
 	status: str				# "ok" | "error"
-	sku: Optional[str]
-	ean: Optional[str]
+	key: tuple				# wartości klucza w kolejności specyfikacji
 	data: Optional[dict]
 	reason: Optional[str]
 
 
-def _text(elem):
-	if elem is None:
+def _raw_value(elem, rel, attr):
+	"""Tekst elementu lub wartość atrybutu; None = element/atrybut nieobecny."""
+	target = elem if rel in ("", ".") else elem.find(rel)
+	if target is None:
 		return None
-	return elem.text if elem.text is not None else ""
+	if attr:
+		return target.get(attr)
+	return target.text if target.text is not None else ""
 
 
-def _convert(kind, raw):
-	"""Zwraca wartość Pythona albo rzuca ValueError z opisem."""
+def convert(entry, raw):
+	"""Konwersja tekstu z pliku wg typu pola docelowego.
+	Zwraca wartość Pythona albo rzuca ValueError z opisem."""
 	if raw is None:
 		return None
-	if kind == "raw":
-		return raw if raw != "" else False
-	if kind == "html":
-		value = raw.strip()
+	value = raw.strip() if entry.get("strip", True) else raw
+	if entry.get("relation"):
+		return raw.strip()
+	ftype = entry.get("ftype")
+	if ftype in TEXT_TYPES:
 		return value or False
-	value = raw.strip()
-	if kind in ("str", "text"):
-		return value or False
-	if kind == "bool_tf":
-		low = value.lower()
-		if low in ("t", "true", "1", "y", "yes"):
+	if ftype == "html":
+		return raw.strip() or False
+	if ftype == "boolean":
+		low = raw.strip().lower()
+		true_v = (entry.get("bool_true") or "").lower()
+		false_v = (entry.get("bool_false") or "").lower()
+		if low == true_v or low in TRUE_VALUES:
 			return True
-		if low in ("f", "false", "0", "n", "no", ""):
+		if low == false_v or low in FALSE_VALUES:
 			return False
-		raise ValueError(f"niepoprawna wartość logiczna {value!r}")
-	if kind == "int":
-		if value == "":
-			return 0
-		return int(float(value.replace(",", ".")))
-	if kind == "float":
-		if value == "":
-			return 0.0
-		return float(value.replace(",", "."))
-	raise ValueError(f"nieznany rodzaj pola {kind!r}")
+		raise ValueError(f"niepoprawna wartość logiczna {raw.strip()!r}")
+	if ftype == "integer":
+		text = raw.strip()
+		return int(float(text.replace(",", "."))) if text else 0
+	if ftype in ("float", "monetary"):
+		text = raw.strip()
+		return float(text.replace(",", ".")) if text else 0.0
+	raise ValueError(f"nieobsługiwany typ pola {ftype!r}")
 
 
-def parse_product(index, elem):
-	"""Mapuje jeden element <Product> na ParseResult."""
-	data = {}
-	problems = []
+def parse_record(index, elem, spec):
+	"""Mapuje jeden element rekordu na ParseResult."""
+	key, vals, rel, media, problems = {}, {}, {}, [], []
 
-	for tag, key, kind in FIELD_SPEC:
-		raw = _text(elem.find(tag))
+	for entry in spec["entries"]:
+		raw = _raw_value(elem, entry["rel"], entry.get("attr"))
 		try:
-			value = _convert(kind, raw)
+			value = convert(entry, raw)
 		except ValueError as exc:
-			problems.append(f"{tag}: {exc}")
+			problems.append(f"{entry['node']}: {exc}")
 			continue
-		if value is not None:
-			data[key] = value
+		if entry.get("required") and not value:
+			problems.append(f"{entry['node']}: brak wymaganej wartości")
+		if value is None:
+			continue
+		if entry.get("relation"):
+			field, sub = entry["relation"]
+			rel.setdefault(field, {})[sub] = value
+		elif entry.get("role") == "key":
+			key[entry["target"]] = value
+		else:
+			vals[entry["target"]] = value
 
-	media = []
-	for tag, code in MEDIA_SPEC:
-		url = (_text(elem.find(tag)) or "").strip()
-		if url:
-			media.append({"type": code, "url": url, "size": False, "sequence": 10})
-	gallery = elem.find(GALLERY_TAG)
-	if gallery is not None:
-		for pos, img in enumerate(gallery.iter(GALLERY_ITEM_TAG), start=1):
-			url = (img.get("url") or "").strip()
+	for item in spec["media"]:
+		if item.get("loop"):
+			for pos, node in enumerate(elem.iterfind(item["rel"]), start=1):
+				url = (node.get(item.get("url_attr") or "url") or "").strip()
+				if url:
+					size = node.get(item["size_attr"]) if item.get("size_attr") else None
+					media.append({"type": item["code"], "url": url, "size": size or False, "sequence": pos})
+		else:
+			url = (_raw_value(elem, item["rel"], item.get("attr")) or "").strip()
 			if url:
-				media.append({
-					"type": GALLERY_CODE, "url": url,
-					"size": img.get("size") or False, "sequence": pos,
-				})
-	data["media"] = media
+				media.append({"type": item["code"], "url": url, "size": False, "sequence": 10})
 
-	sku = data.get("sku") or None
-	ean = data.get("ean") or None
-	for key in REQUIRED_KEYS:
-		if not data.get(key):
-			problems.append(f"brak wymaganej wartości '{key}'")
-
-	text_values = [v for v in data.values() if isinstance(v, str)]
-	if any("\x00" in v for v in text_values):
-		problems.append("znak NUL w danych")
-
+	key_tuple = tuple(key.get(e["target"]) for e in spec["entries"] if e.get("role") == "key")
+	data = {"key": key, "vals": vals, "rel": rel, "media": media}
 	if problems:
-		return ParseResult(index, "error", sku, ean, data, "; ".join(problems))
-	return ParseResult(index, "ok", sku, ean, data, None)
+		return ParseResult(index, "error", key_tuple, data, "; ".join(problems))
+	return ParseResult(index, "ok", key_tuple, data, None)
 
 
-def iter_products(path):
-	"""Strumieniowo zwraca ParseResult dla kolejnych <Product> (index od 0)."""
+def iter_records(path, spec):
+	"""Strumieniowo zwraca ParseResult dla kolejnych rekordów (index od 0)."""
 	context = etree.iterparse(
-		path, events=("end",), tag=PRODUCT_TAG,
-		remove_comments=True, resolve_entities=False, no_network=True,
-		huge_tree=True,
+		path, events=("end",), tag=spec["record"],
+		remove_comments=True, resolve_entities=False, no_network=True, huge_tree=True,
 	)
 	index = 0
 	for _event, elem in context:
-		yield parse_product(index, elem)
+		yield parse_record(index, elem, spec)
 		index += 1
 		elem.clear()
 		parent = elem.getparent()
@@ -247,12 +190,11 @@ def iter_products(path):
 	del context
 
 
-def check_root(path):
+def check_root(path, expected="Document"):
 	"""Sprawdza element główny pliku. Zwraca nazwę roota albo rzuca ValueError."""
 	for _event, elem in etree.iterparse(path, events=("start",), resolve_entities=False, no_network=True):
 		tag = etree.QName(elem).localname
-		if tag != "Document":
-			raise ValueError(f"Nieoczekiwany element główny <{tag}> (oczekiwano <Document>).")
+		if expected and tag != expected:
+			raise ValueError(f"Nieoczekiwany element główny <{tag}> (oczekiwano <{expected}>).")
 		return tag
 	raise ValueError("Pusty plik XML.")
-#EoF

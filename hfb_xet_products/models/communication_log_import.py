@@ -30,23 +30,27 @@
 # solutions contained herein are not covered by this license and remain the
 # property of the author.
 #################################################################################
-"""	@version 20.0.0.2.1
+"""	@version 20.0.0.3.0
 	@owner  Hadron for Business Sp. z o.o.
 	@author Andrzej Wiśniewski (warp3r)
-	@date   2026-11-16
+	@date   2026-11-17
 
 
-	Import produktów: fetch -> parse -> apply -> finalize.
+	Import produktów: fetch -> parse -> apply -> images -> finalize.
 
-	fetch    - najstarszy plik z katalogu wejściowego SFTP (wzorzec nazwy),
-			   pomijając pliki już zaimportowane (sygnatura nazwa|rozmiar|mtime);
-			   pobranie z kontrolą rozmiaru, kopia pliku w logu (file_data).
-	parse    - parser strumieniowy (xp_parser) -> xp.staging.line;
-			   kontrola wymaganych wartości i duplikatów klucza SKU+EAN w pliku.
-	apply    - linie 'draft' partiami do product.template; klucz SKU + EAN
-			   (product.product.default_code + barcode): jest -> aktualizacja
-			   (tylko zmienione pola), brak -> utworzenie. Savepoint na linię:
-			   błąd zapisu oznacza błąd linii, import idzie dalej.
+	fetch    - plik z katalogu wejściowego SFTP (wzorzec nazwy), bez pomijania
+			   plików wczytanych wcześniej; z katalogiem archiwum najstarszy,
+			   bez niego najnowszy; pobranie z kontrolą rozmiaru, kopia pliku
+			   w logu (file_data).
+	parse    - specyfikacja z szablonu importu XET (xp_usage = import, kanał
+			   albo domyślny xet_template_products_import) -> parser strumieniowy
+			   (xp_parser) -> xp.staging.line; kontrola wartości wymaganych
+			   (required_flag) i duplikatów klucza w pliku.
+	apply    - linie 'draft' partiami do product.template; klucz = węzły z rolą
+			   'Klucz dopasowania' (domyślnie SKU + EAN: default_code + barcode):
+			   jest -> aktualizacja (tylko zmienione pola), brak -> utworzenie;
+			   relacje wyszukiwane po wartościach ścieżek (kategorie tworzone).
+			   Savepoint na linię: błąd zapisu oznacza błąd linii.
 	images   - (opcjonalnie) pobranie obrazu z medium 'Zdjęcie główne' do
 			   image_1920, tylko gdy URL różni się od xp_image_source_url.
 			   Odoo 20 nie przyjmuje linku jako obrazu produktu (załącznik typu
@@ -71,7 +75,7 @@ from odoo import Command, fields, models
 from odoo.tools.image import binary_to_image
 
 from .communication_log import STAGE_AGAIN, STAGE_STOP, XpFatalError
-from .xp_parser import check_root, iter_products
+from .xp_parser import check_root, iter_records
 
 _logger = logging.getLogger(__name__)
 
@@ -84,8 +88,8 @@ IMAGE_USER_AGENT = "Odoo-XET-Products/1.0 (+image import)"
 # z tego hosta są w bieżącym kroku pomijane (bez czekania na timeouty)
 IMAGE_HOST_FAIL_LIMIT = 5
 
-# klucze payloadu obsługiwane osobno (nie są polami product.template)
-SPECIAL_KEYS = {"sku", "ean", "parent_category", "product_category", "currency", "vat", "media"}
+# modele relacji, w których brakujący rekord jest tworzony przy imporcie
+RELATION_CREATE_MODELS = ("product.category",)
 
 
 class CommunicationLogImport(models.Model):
@@ -170,12 +174,115 @@ class CommunicationLogImport(models.Model):
 		return path
 
 	# ==================================================================
+	# szablon importu -> specyfikacja parsera
+	# ==================================================================
+	def _xp_import_template(self):
+		"""Szablon importu kanału; bez wskazania - domyślny szablon modułu."""
+		template = self.xp_config_id.template_id
+		if not template or template.xp_usage != "import":
+			template = self.env.ref("hfb_xet_products.xet_template_products_import", raise_if_not_found=False)
+		if not template:
+			raise XpFatalError("Brak szablonu importu XET Products (kanał nie wskazuje szablonu z przeznaczeniem 'import').")
+		return template
+
+	def _xp_import_spec(self, template):
+		"""Buduje specyfikację parsera (dict bez ORM) z węzłów szablonu importu.
+
+		- rekord: najpłytszy węzeł z pętlą,
+		- węzły z value_source = field i src_rel_path: wartości pól,
+		  ścieżka przez relację m2o/m2m (np. categ_id.name) = wyszukanie rekordu,
+		- rola 'media': pojedynczy link albo pętla elementów z atrybutem url,
+		- rola 'ignore' i węzły bez wartości (kontenery) są pomijane.
+		"""
+		Product = self.env["product.template"]
+		nodes = template.node_ids.sorted(lambda n: ((n.xpath or "").count("/"), n.sequence, n.id))
+		loops = nodes.filtered(lambda n: n.loop_mode not in (False, "none"))
+		if not loops:
+			raise XpFatalError(f"Szablon importu {template.name}: brak węzła z pętlą (element rekordu produktu).")
+		record = loops[0]
+		prefix = (record.xpath or record.name) + "/"
+		root = (record.xpath or "").split("/")[0] or template.root_tag
+		entries, media, problems = [], [], []
+
+		def location(node):
+			rel = (node.xpath or "")[len(prefix):]
+			if node.node_kind == "attribute":
+				parent, _sep, attr = rel.rpartition("/")
+				return parent, attr
+			return rel, None
+
+		def in_media_loop(node):
+			parent = node.parent_id
+			while parent and parent != record:
+				if parent.xp_import_role == "media" and parent.loop_mode not in (False, "none"):
+					return True
+				parent = parent.parent_id
+			return False
+
+		for node in nodes:
+			if node == record or not (node.xpath or "").startswith(prefix):
+				continue
+			role = node.xp_import_role or "field"
+			if role == "ignore" or in_media_loop(node):
+				continue
+			rel, attr = location(node)
+			if role == "media":
+				code = node.xp_media_type_id.code
+				if not code:
+					problems.append(f"{node.xpath}: rola 'Medium' bez typu medium")
+					continue
+				if node.loop_mode not in (False, "none"):
+					attrs = {c.src_rel_path: c.name for c in node.child_ids if c.node_kind == "attribute" and c.src_rel_path}
+					media.append({"node": node.name, "rel": rel, "code": code, "loop": True,
+								  "url_attr": attrs.get("url", "url"), "size_attr": attrs.get("size")})
+				else:
+					media.append({"node": node.name, "rel": rel, "attr": attr, "code": code, "loop": False})
+				continue
+			if node.value_source != "field" or not node.src_rel_path:
+				continue	# węzeł strukturalny
+			path = node.src_rel_path.strip()
+			first, _sep, sub = path.partition(".")
+			field = Product._fields.get(first)
+			if field is None:
+				problems.append(f"{node.xpath}: pole {first!r} nie istnieje w product.template")
+				continue
+			entry = {
+				"node": node.name, "rel": rel, "attr": attr, "target": first, "role": role,
+				"required": bool(node.required_flag), "strip": bool(node.fmt_strip),
+				"bool_true": node.fmt_bool_true, "bool_false": node.fmt_bool_false,
+				"ftype": field.type, "relation": None,
+			}
+			if field.type in ("many2one", "many2many"):
+				if not sub:
+					problems.append(f"{node.xpath}: relacja {first} wymaga pola wyszukiwania, np. {first}.name")
+					continue
+				if role == "key":
+					problems.append(f"{node.xpath}: klucz nie może być ścieżką przez relację")
+					continue
+				entry["relation"] = (first, sub)
+			elif sub:
+				problems.append(f"{node.xpath}: {path!r} - pole {first} nie jest relacją")
+				continue
+			elif field.type in ("one2many", "binary", "image", "json", "properties"):
+				problems.append(f"{node.xpath}: nieobsługiwany typ pola {first} ({field.type})")
+				continue
+			entries.append(entry)
+
+		if not any(e["role"] == "key" for e in entries):
+			problems.append("brak węzłów z rolą 'Klucz dopasowania'")
+		if problems:
+			raise XpFatalError(f"Szablon importu {template.name}:\n" + "\n".join(problems))
+		return {"root": root, "record": record.name, "entries": entries, "media": media}
+
+	# ==================================================================
 	# parse
 	# ==================================================================
 	def _xp_stage_parse(self):
 		path = self._xp_local_file()
+		template = self._xp_import_template()
+		spec = self._xp_import_spec(template)
 		try:
-			check_root(path)
+			check_root(path, spec["root"])
 		except (ValueError, etree.XMLSyntaxError) as exc:
 			raise XpFatalError(f"Niepoprawny plik XML: {exc}") from exc
 
@@ -183,28 +290,31 @@ class CommunicationLogImport(models.Model):
 		# etap powtarzalny: linie poprzedniej, przerwanej próby są usuwane
 		self.env.cr.execute("DELETE FROM xp_staging_line WHERE log_id = %s", (self.id,))
 
+		key_names = [e["node"] for e in spec["entries"] if e["role"] == "key"]
 		seen = {}
 		buffer = []
 		total = errors = 0
 		try:
-			for result in iter_products(path):
+			for result in iter_records(path, spec):
 				total += 1
 				state = "draft" if result.status == "ok" else "error"
 				message = result.reason
-				key = (result.sku, result.ean)
 				if state == "draft":
-					if key in seen:
+					if result.key in seen:
 						state = "error"
-						message = f"Duplikat klucza SKU+EAN w pliku (pierwsze wystąpienie: pozycja {seen[key] + 1})."
+						message = (f"Duplikat klucza {'+'.join(key_names)} w pliku "
+								   f"(pierwsze wystąpienie: pozycja {seen[result.key] + 1}).")
 					else:
-						seen[key] = result.index
+						seen[result.key] = result.index
 				errors += state == "error"
+				key = result.data.get("key") or {}
+				values = [v for v in result.key if v]
 				buffer.append({
 					"log_id": self.id,
 					"sequence": result.index + 1,
 					"state": state,
-					"sku": result.sku,
-					"ean": result.ean,
+					"sku": key.get("default_code") or (values[0] if values else False),
+					"ean": key.get("barcode") or (values[1] if len(values) > 1 else False),
 					"payload": result.data,
 					"error_message": message,
 				})
@@ -217,9 +327,9 @@ class CommunicationLogImport(models.Model):
 			raise XpFatalError(f"Błąd składni XML: {exc}") from exc
 
 		if not total:
-			raise XpFatalError("Plik nie zawiera elementów <Product>.")
-		self.write({"xp_count_total": total, "xp_count_error": errors})
-		self._xp_post(f"Parsowanie: {total} rekordów, w tym błędnych: {errors}.")
+			raise XpFatalError(f"Plik nie zawiera elementów <{spec['record']}>.")
+		self.write({"xp_count_total": total, "xp_count_error": errors, "template_id": template.id})
+		self._xp_post(f"Parsowanie (szablon {template.name}): {total} rekordów, w tym błędnych: {errors}.")
 		self.env.cr.commit()
 		return None
 
@@ -231,7 +341,7 @@ class CommunicationLogImport(models.Model):
 		Line = self.env["xp.staging.line"].sudo()
 		batch_size = max(config.batch_size, 1)
 		step_end = time.monotonic() + APPLY_STEP_SECONDS
-		caches = {"categ": {}, "tax": {}, "currency": {}, "media_type": {}}
+		caches = {"rel": {}, "media_type": {}}
 
 		while True:
 			lines = Line.search([("log_id", "=", self.id), ("state", "=", "draft")],
@@ -247,7 +357,9 @@ class CommunicationLogImport(models.Model):
 						"product_tmpl_id": product.id, "error_message": note,
 					})
 				except Exception as exc:  # noqa: BLE001 - błąd linii, import idzie dalej
-					caches["categ"].clear()  # cache mógł zawierać rekordy wycofane savepointem
+					# pamięć podręczna mogła zawierać rekordy wycofane savepointem
+					caches["rel"].clear()
+					caches["media_type"].clear()
 					line.write({"state": "error", "error_message": str(exc)})
 			self.env.cr.commit()
 			if time.monotonic() >= step_end:
@@ -256,42 +368,27 @@ class CommunicationLogImport(models.Model):
 	def _xp_apply_line(self, line, caches):
 		config = self.xp_config_id
 		data = dict(line.payload or {})
+		if "vals" not in data:
+			raise Exception("Linia w formacie sprzed wersji 20.0.0.3.0 - uruchom przebieg importu ponownie.")
 		Template = self.env["product.template"].with_context(
 			lang=config.xp_lang or self.env.lang,
 			tracking_disable=True, mail_create_nolog=True, mail_notrack=True,
 		)
-		Product = self.env["product.product"].with_context(active_test=False)
-
 		notes = []
-		vals = {k: v for k, v in data.items() if k not in SPECIAL_KEYS}
-
-		categ = self._xp_category(data.get("parent_category"), data.get("product_category"), caches)
-		if categ:
-			vals["categ_id"] = categ
-		if "currency" in data:
-			currency = self._xp_currency(data.get("currency"), caches)
-			if currency or not data.get("currency"):
-				vals["xp_price_currency_id"] = currency
-			else:
-				notes.append(f"Nieznana waluta {data.get('currency')!r} - pole pominięte.")
-		if data.get("vat") is not None:
-			tax = self._xp_tax(data.get("vat"), caches)
-			if tax:
-				vals["taxes_id"] = [tax]
-			else:
-				notes.append(f"Brak podatku sprzedaży {data.get('vat')}% w firmie - pole pominięte.")
-
+		vals = dict(data.get("vals") or {})
+		for fname, subs in (data.get("rel") or {}).items():
+			value = self._xp_resolve_relation(fname, subs, caches, notes)
+			if value is not None:
+				vals[fname] = value
+		key = data.get("key") or {}
 		media = data.get("media") or []
 
-		products = Product.search([
-			("default_code", "=", data["sku"]),
-			("barcode", "=", data["ean"]),
-		], limit=2)
-		if len(products) > 1:
-			raise Exception(f"Klucz SKU+EAN wskazuje {len(products)} produkty: {products.ids}.")
+		templates = self._xp_find_by_key(key)
+		if len(templates) > 1:
+			raise Exception(f"Klucz {key} wskazuje {len(templates)} produkty: {templates.ids}.")
 
-		if products:
-			template = Template.browse(products.product_tmpl_id.id)
+		if templates:
+			template = Template.browse(templates.id)
 			diff = self._xp_diff(template, vals)
 			media_changed = self._xp_media_changed(template, media)
 			if diff:
@@ -300,14 +397,87 @@ class CommunicationLogImport(models.Model):
 				self._xp_replace_media(template, media, caches)
 			action = "updated" if (diff or media_changed) else "unchanged"
 		else:
-			create_vals = dict(vals, default_code=data["sku"], barcode=data["ean"])
+			create_vals = dict(vals, **key)
 			create_vals.setdefault("type", "consu")
-			if "taxes_id" in create_vals:
-				create_vals["taxes_id"] = [Command.set(create_vals["taxes_id"])]
+			for fname, value in list(create_vals.items()):
+				if Template._fields[fname].type == "many2many":
+					create_vals[fname] = [Command.set(value or [])]
 			template = Template.create(create_vals)
 			self._xp_replace_media(template, media, caches)
 			action = "created"
 		return template, action, "\n".join(notes) or False
+
+	def _xp_find_by_key(self, key):
+		"""Szablony produktów pasujące do klucza. Gdy wszystkie pola klucza
+		istnieją na product.product (np. default_code, barcode), szukanie
+		odbywa się po wariantach."""
+		if not key:
+			raise Exception("Pusty klucz dopasowania.")
+		domain = [(name, "=", value) for name, value in key.items()]
+		Variant = self.env["product.product"].with_context(active_test=False)
+		if all(name in Variant._fields and Variant._fields[name].store for name in key):
+			return Variant.search(domain, limit=2).product_tmpl_id
+		return self.env["product.template"].with_context(active_test=False).search(domain, limit=2)
+
+	def _xp_relation_domain(self, comodel):
+		"""Warunki dodatkowe wyszukiwania rekordu relacji."""
+		if comodel == "account.tax":
+			return [("type_tax_use", "=", "sale"), ("amount_type", "=", "percent"),
+					("company_id", "=", self.xp_config_id.company_id.id)]
+		return []
+
+	def _xp_resolve_relation(self, fname, subs, caches, notes):
+		"""Wartość pola relacji z wartości tekstowych ścieżek podrzędnych.
+
+		Zwraca: id (many2one), listę id (many2many), False (wyczyść)
+		albo None (nie zmieniaj pola).
+		- model z parent_id i dozwolonym tworzeniem (product.category):
+		  ścieżki name / parent_id.name / parent_id.parent_id.name … budują
+		  hierarchię; brakujące rekordy są tworzone; pusta nazwa = bez zmian,
+		- pozostałe modele: wyszukanie po wszystkich ścieżkach; brak rekordu =
+		  uwaga w linii i pole bez zmian; puste wartości: many2one czyszczone,
+		  many2many bez zmian.
+		"""
+		field = self.env["product.template"]._fields[fname]
+		comodel = field.comodel_name
+		Model = self.env[comodel].with_context(active_test=False)
+		cache_key = (comodel, tuple(sorted(subs.items())))
+		if cache_key in caches["rel"]:
+			return caches["rel"][cache_key]
+
+		result = None
+		if comodel in RELATION_CREATE_MODELS and "parent_id" in Model._fields:
+			levels = sorted(((sub.count("parent_id."), sub.rsplit(".", 1)[-1], value)
+							 for sub, value in subs.items()), reverse=True)
+			if any(depth == 0 and value for depth, _leaf, value in levels):
+				parent_id = False
+				for _depth, leaf, value in levels:
+					if not value:
+						continue
+					record = Model.search([(leaf, "=", value), ("parent_id", "=", parent_id)], limit=1)
+					if not record:
+						record = Model.create({leaf: value, "parent_id": parent_id})
+					parent_id = record.id
+				result = parent_id
+		elif not any(subs.values()):
+			result = False if field.type == "many2one" else None
+		else:
+			domain = list(self._xp_relation_domain(comodel))
+			for sub, value in subs.items():
+				leaf = Model._fields.get(sub.split(".")[0])
+				if leaf is not None and leaf.type in ("float", "monetary"):
+					value = float(value.replace(",", "."))
+				elif leaf is not None and leaf.type == "integer":
+					value = int(float(value.replace(",", ".")))
+				domain.append((sub, "=", value))
+			record = Model.search(domain, limit=1)
+			if record:
+				result = record.id if field.type == "many2one" else [record.id]
+			else:
+				notes.append(f"{fname}: brak rekordu {comodel} dla {subs} - pole pominięte.")
+				return None
+		caches["rel"][cache_key] = result
+		return result
 
 	# ------------------------------------------------------------------
 	def _xp_diff(self, record, vals):
@@ -366,47 +536,6 @@ class CommunicationLogImport(models.Model):
 				mtype = self.env["xp.media.type"].create({"code": code, "name": code})
 			cache[code] = mtype.id
 		return cache[code]
-
-	def _xp_category(self, parent_name, name, caches):
-		if not name:
-			return False
-		cache = caches["categ"]
-		key = (parent_name or "", name)
-		if key in cache:
-			return cache[key]
-		Category = self.env["product.category"]
-		parent_id = False
-		if parent_name:
-			parent = Category.search([("name", "=", parent_name), ("parent_id", "=", False)], limit=1)
-			if not parent:
-				parent = Category.create({"name": parent_name})
-			parent_id = parent.id
-		categ = Category.search([("name", "=", name), ("parent_id", "=", parent_id)], limit=1)
-		if not categ:
-			categ = Category.create({"name": name, "parent_id": parent_id})
-		cache[key] = categ.id
-		return categ.id
-
-	def _xp_currency(self, code, caches):
-		if not code:
-			return False
-		cache = caches["currency"]
-		if code not in cache:
-			cache[code] = self.env["res.currency"].with_context(active_test=False).search(
-				[("name", "=", code)], limit=1).id or False
-		return cache[code]
-
-	def _xp_tax(self, rate, caches):
-		cache = caches["tax"]
-		if rate not in cache:
-			company = self.xp_config_id.company_id
-			cache[rate] = self.env["account.tax"].search([
-				("type_tax_use", "=", "sale"),
-				("amount_type", "=", "percent"),
-				("amount", "=", float(rate)),
-				("company_id", "=", company.id),
-			], limit=1).id or False
-		return cache[rate]
 
 	# ==================================================================
 	# images

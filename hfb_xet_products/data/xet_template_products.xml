@@ -9,6 +9,7 @@
 		<field name="name">odoo-20.0-xet_products-1.0-products-1.0.0</field>
 		<field name="description">Eksport produktów (format ADLER: Document/Product). Rekord startowy: communication.log.</field>
 		<field name="model_id" ref="hfb_xmlmap_exporter.model_communication_log"/>
+		<field name="xp_usage">export</field>
 		<field name="root_tag">Document</field>
 		<field name="namespace" eval="False"/>
 		<field name="ns_prefix" eval="False"/>
@@ -33,6 +34,7 @@
 		<field name="sequence">10</field>
 		<field name="loop_mode">many2many</field>
 		<field name="loop_rel_field_id" ref="field_communication_log__xp_product_ids"/>
+		<field name="loop_model_id" ref="hfb_xmlmap_exporter.model_communication_log"/>
 		<field name="loop_order">default_code</field>
 		<field name="value_source">none</field>
 	</record>
@@ -557,6 +559,7 @@
 		<field name="sequence">10</field>
 		<field name="loop_mode">many2many</field>
 		<field name="loop_rel_field_id" ref="field_product_template__xp_gallery_ids"/>
+		<field name="loop_model_id" ref="product.model_product_template"/>
 		<field name="value_source">none</field>
 	</record>
 	<record id="xet_node_img_url" model="xml.export.node">

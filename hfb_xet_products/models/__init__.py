@@ -30,12 +30,13 @@
 # solutions contained herein are not covered by this license and remain the
 # property of the author.
 #################################################################################
-"""	@version 20.0.0.2.1
+"""	@version 20.0.0.3.0
 	@owner  Hadron for Business Sp. z o.o.
 	@author Andrzej Wiśniewski (warp3r)
-	@date   2026-11-16
+	@date   2026-11-17
 """
 from . import xp_media
+from . import xml_template_xp
 from . import product_template
 from . import communication_provider
 from . import xp_config

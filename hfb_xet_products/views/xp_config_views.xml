@@ -41,6 +41,7 @@
 						<group>
 							<field name="code"/>
 							<field name="direction"/>
+							<field name="template_id"/>
 							<field name="provider_id"/>
 						</group>
 						<group>
@@ -91,7 +92,6 @@
 									<field name="export_file_name"/>
 								</group>
 								<group string="Zawartość">
-									<field name="template_id"/>
 									<field name="export_mode"/>
 									<field name="export_domain" widget="domain" options="{'model': 'product.template'}"/>
 									<field name="export_validate_xsd"/>

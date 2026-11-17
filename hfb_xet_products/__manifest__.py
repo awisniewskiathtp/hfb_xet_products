@@ -27,7 +27,7 @@
 #################################################################################
 {
 	"name": "XET Products (import/eksport produktów XML)",
-	"version": "20.0.0.2.1",
+	"version": "20.0.0.3.0",
 	"category": "Inventory/Products",
 	"summary": "Import i eksport produktów XML przez SFTP na bazie XET Base",
 	"author": "Hadron for business sp. z o.o.",
@@ -49,8 +49,10 @@
 		"views/communication_log_views.xml",
 		"views/product_template_views.xml",
 		"views/xp_media_views.xml",
+		"views/xml_template_xp_views.xml",
 		"views/menu.xml",
 		"data/xet_template_products.xml",
+		"data/xet_template_products_import.xml",
 	],
 	"installable": True,
 	"application": False,

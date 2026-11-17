@@ -30,10 +30,10 @@
 # solutions contained herein are not covered by this license and remain the
 # property of the author.
 #################################################################################
-"""	@version 20.0.0.2.1
+"""	@version 20.0.0.3.0
 	@owner  Hadron for Business Sp. z o.o.
 	@author Andrzej Wiśniewski (warp3r)
-	@date   2026-11-16
+	@date   2026-11-17
 
 
 	Przebiegi XET Products w communication.log.
@@ -128,8 +128,7 @@ class CommunicationLog(models.Model):
 	xp_local_path = fields.Char(string="Plik roboczy", readonly=True)
 	xp_source_signature = fields.Char(
 		string="Sygnatura pliku", index=True, readonly=True,
-		help="nazwa|rozmiar|mtime - chroni przed ponownym importem tego "
-			 "samego pliku, gdy plik zostaje w katalogu wejściowym.",
+		help="nazwa|rozmiar|mtime pobranego pliku (informacyjnie).",
 	)
 	xp_staging_ids = fields.One2many("xp.staging.line", "log_id", string="Linie importu")
 
